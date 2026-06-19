@@ -1740,7 +1740,7 @@ function doSignup() {
   showAuthAlert('signupAlert','success','✅ Account created! Taking you to your profile…');
   setTimeout(() => {
     hideModal('signupModal');
-    showPendingScreen();
+    location.reload();
   }, 900);
 }
 
