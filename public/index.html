@@ -5105,5 +5105,71 @@ function tick(el) {
   });
 })();
 </script>
+
+<script>
+// Real API-based auth (overrides the localStorage demo versions above)
+async function doSignup() {
+  const name  = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const pass  = document.getElementById('suPass').value.trim();
+  clearAuthAlert('signupAlert');
+  if (!name)  { showAuthAlert('signupAlert','error','Please enter your full name.'); return; }
+  if (!email || !/\S+@\S+\.\S+/.test(email))  { showAuthAlert('signupAlert','error','Please enter a valid email address.'); return; }
+  if (!pass || pass.length < 8) { showAuthAlert('signupAlert','error','Password must be at least 8 characters.'); return; }
+  try {
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showAuthAlert('signupAlert','error', data.error || 'Sign up failed.');
+      return;
+    }
+    showAuthAlert('signupAlert','success','Account created! Refreshing...');
+    setTimeout(() => { hideModal('signupModal'); location.reload(); }, 900);
+  } catch (e) {
+    showAuthAlert('signupAlert','error','Could not reach the server. Is it running?');
+  }
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value.trim();
+  clearAuthAlert('loginAlert');
+  document.getElementById('loginEmail').classList.remove('input-error');
+  document.getElementById('loginEmailErr').classList.remove('show');
+  document.getElementById('loginPass').classList.remove('input-error');
+  document.getElementById('loginPassErr').classList.remove('show');
+  if (!email || !/\S+@\S+\.\S+/.test(email)) {
+    document.getElementById('loginEmail').classList.add('input-error');
+    document.getElementById('loginEmailErr').classList.add('show');
+    return;
+  }
+  if (!pass || pass.length < 6) {
+    document.getElementById('loginPass').classList.add('input-error');
+    document.getElementById('loginPassErr').classList.add('show');
+    return;
+  }
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showAuthAlert('loginAlert','error', data.error || 'Login failed.');
+      document.getElementById('loginPass').classList.add('input-error');
+      return;
+    }
+    hideModal('loginModal');
+    location.reload();
+  } catch (e) {
+    showAuthAlert('loginAlert','error','Could not reach the server. Is it running?');
+  }
+}
+</script>
 </body>
 </html>
