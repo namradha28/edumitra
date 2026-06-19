@@ -232,9 +232,10 @@ app.post('/api/auth/signup', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body || {};
   const user = readUsers()[(email || '').toLowerCase()];
-  if (!user) return res.status(404).json({ error: 'No account found for this email.' });
-  if (!user.passwordHash) return res.status(400).json({ error: 'This account was created with Google/LinkedIn — use that button to sign in.' });
-  if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: 'Incorrect password.' });
+  const GENERIC = 'Invalid email or password.';
+  if (!user) return res.status(401).json({ error: GENERIC });
+  if (!user.passwordHash) return res.status(401).json({ error: GENERIC });
+  if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: GENERIC });
 
   req.session.user = { role: 'student', ...publicUser(user) };
   res.json({ ok: true, user: req.session.user });
@@ -266,18 +267,19 @@ app.get('/auth/logout', (req, res) => {
 app.post('/api/admin/login', (req, res) => {
   const { email, password } = req.body || {};
   const key = (email || '').toLowerCase();
+  const GENERIC = 'Invalid email or password.';
 
   if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
     if (password === SUPERADMIN_PASSWORD) {
       req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
       return res.json({ ok: true, user: req.session.user });
     }
-    return res.status(401).json({ error: 'Incorrect password.' });
+    return res.status(401).json({ error: GENERIC });
   }
 
   const admin = readAdmins()[key];
-  if (!admin) return res.status(404).json({ error: 'No admin account found for this email.' });
-  if (!verifyPassword(password || '', admin.passwordHash)) return res.status(401).json({ error: 'Incorrect password.' });
+  if (!admin) return res.status(401).json({ error: GENERIC });
+  if (!verifyPassword(password || '', admin.passwordHash)) return res.status(401).json({ error: GENERIC });
 
   req.session.user = { role: 'admin', email: key, name: admin.name };
   res.json({ ok: true, user: req.session.user });
