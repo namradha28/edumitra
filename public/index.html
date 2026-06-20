@@ -5171,5 +5171,17 @@ async function doLogin() {
   }
 }
 </script>
+<script>
+// Approved students go straight to dashboard
+(async function() {
+  try {
+    const r = await fetch('/api/me');
+    const d = await r.json();
+    if (d.loggedIn && d.user && d.user.role === 'student' && d.user.approved) {
+      window.location.href = '/dashboard.html';
+    }
+  } catch(e) {}
+})();
+</script>
 </body>
 </html>
