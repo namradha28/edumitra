@@ -19,7 +19,8 @@
     "express-session": "^1.19.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.23.0",
-    "mysql2": "^3.14.0"
+    "mysql2": "^3.14.0",
+    "nodemailer": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^1.19.4"
