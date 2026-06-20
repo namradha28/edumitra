@@ -3,453 +3,1001 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EduMitra Admin Portal</title>
-<meta name="robots" content="noindex, nofollow">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<title>EduMitra — Super Admin</title>
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --ink:#1a1a1a; --navy:#2d2d2d; --gold:#c8953a; --gold2:#e6b96a; --gold3:#f5d898;
-  --cream:#faf7f2; --paper:#f4f0e8; --mist:#e8e2d6; --gray:#8a8070;
-  --green:#0e7e44; --red:#c0392b; --blue:#1a5fad;
-}
-body{font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--cream);}
-.brand{font-family:'Playfair Display',serif;font-weight:700;}
-button{font-family:inherit;cursor:pointer;border:none;}
-input{font-family:inherit;}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #faf7f2;
+    color: #0a1628;
+    -webkit-font-smoothing: antialiased;
+  }
 
-/* ── Login screen ── */
-#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-.login-card{width:100%;max-width:380px;background:#fff;border-radius:18px;padding:40px 34px;box-shadow:0 20px 60px rgba(0,0,0,.08);}
-.login-logo{font-size:24px;text-align:center;margin-bottom:4px;}
-.login-logo span{color:var(--gold);}
-.login-sub{text-align:center;font-size:12.5px;color:var(--gray);letter-spacing:.08em;text-transform:uppercase;margin-bottom:28px;}
-.field{margin-bottom:16px;}
-.field label{display:block;font-size:12.5px;font-weight:500;margin-bottom:6px;color:var(--navy);}
-.field input{width:100%;padding:11px 14px;border:1.5px solid var(--mist);border-radius:9px;font-size:14px;outline:none;transition:border-color .15s;}
-.field input:focus{border-color:var(--gold);}
-.btn-gold{width:100%;background:var(--gold);color:#fff;padding:12px;border-radius:9px;font-size:14px;font-weight:600;margin-top:6px;transition:background .15s;}
-.btn-gold:hover{background:var(--gold2);}
-.alert{display:none;font-size:13px;padding:10px 12px;border-radius:8px;margin-bottom:14px;}
-.alert.show{display:block;}
-.alert.error{background:#fdeceb;color:var(--red);}
-.alert.success{background:#eaf7ef;color:var(--green);}
+  /* ────────── LOGIN ────────── */
+  .login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0a1628 0%, #1a2942 100%);
+    padding: 20px;
+  }
+  .login-card {
+    background: #fff;
+    padding: 40px;
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 400px;
+  }
+  .login-card h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 26px;
+    margin-bottom: 4px;
+    color: #0a1628;
+  }
+  .login-card .login-sub { color: #6b7280; font-size: 14px; margin-bottom: 28px; }
+  .login-card label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .login-card input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .login-card input:focus { outline: none; border-color: #c8953a; }
+  .login-card button {
+    width: 100%;
+    padding: 13px;
+    background: #0a1628;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .login-card button:hover { background: #c8953a; }
+  .login-error {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .login-error.show { display: block; }
 
-/* ── Dashboard layout ── */
-#dashboard{display:none;min-height:100vh;}
-.shell{display:flex;min-height:100vh;}
-.sidebar{width:230px;background:var(--ink);color:#fff;flex-shrink:0;display:flex;flex-direction:column;padding:24px 16px;}
-.sb-logo{font-size:19px;padding:0 8px 24px;}
-.sb-logo span{color:var(--gold);}
-.sb-role{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold3);padding:0 8px 18px;}
-.sb-nav-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:8px;color:#cfcfcf;font-size:13.5px;font-weight:500;margin-bottom:3px;background:none;width:100%;text-align:left;}
-.sb-nav-item i{font-size:16px;width:18px;}
-.sb-nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
-.sb-nav-item.active{background:var(--gold);color:#fff;}
-.sb-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:14px;}
-.main{flex:1;padding:32px 40px;overflow-x:hidden;}
-.pane{display:none;}
-.pane.show{display:block;}
-.page-head{margin-bottom:26px;}
-.page-head h1{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;}
-.page-head p{color:var(--gray);font-size:13.5px;margin-top:4px;}
+  /* ────────── APP SHELL ────────── */
+  .app-shell { display: none; min-height: 100vh; }
+  .app-shell.show { display: grid; grid-template-columns: 260px 1fr; }
 
-/* ── KPI cards ── */
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
-.kpi-card{background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.04);}
-.kpi-num{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;}
-.kpi-label{font-size:12.5px;color:var(--gray);margin-top:4px;}
-.kpi-card.k-blue .kpi-num{color:var(--blue);}
-.kpi-card.k-green .kpi-num{color:var(--green);}
-.kpi-card.k-red .kpi-num{color:var(--red);}
+  /* Sidebar */
+  .sidebar {
+    background: #0a1628;
+    color: #cdd5e0;
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-brand {
+    padding: 0 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 20px;
+  }
+  .sidebar-brand .logo-badge {
+    width: 36px; height: 36px;
+    background: #c8953a;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0a1628;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: -0.5px;
+  }
+  .sidebar-brand .brand-text {
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.3px;
+  }
+  .sidebar-brand .brand-text small {
+    display: block;
+    font-size: 11px;
+    color: #c8953a;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .sidebar-section-label {
+    padding: 0 24px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #6b7280;
+    font-weight: 700;
+    margin: 16px 0 8px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 24px;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: #cdd5e0;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
+  .nav-item.active {
+    background: rgba(200,149,58,0.12);
+    border-left-color: #c8953a;
+    color: #fff;
+    font-weight: 600;
+  }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-item .badge {
+    margin-left: auto;
+    background: #c8953a;
+    color: #0a1628;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
 
-/* ── Chart ── */
-.chart-card{background:#fff;border-radius:14px;padding:24px;margin-bottom:28px;box-shadow:0 2px 10px rgba(0,0,0,.04);}
-.chart-card h3{font-size:15px;font-weight:700;margin-bottom:18px;}
-.bars{display:flex;align-items:flex-end;gap:6px;height:120px;}
-.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;}
-.bar{width:100%;background:var(--gold3);border-radius:4px 4px 0 0;transition:background .15s;}
-.bar:hover{background:var(--gold);}
-.bar-day{font-size:9.5px;color:var(--gray);margin-top:6px;}
+  /* Main */
+  .main { padding: 0; }
+  .topbar {
+    background: #fff;
+    border-bottom: 1px solid #eaedf5;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-left h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 18px;
+    color: #0a1628;
+    font-weight: 700;
+  }
+  .topbar-left .breadcrumb {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .user-badge .meta { text-align: right; }
+  .user-badge .meta-name { font-size: 13.5px; font-weight: 700; color: #0a1628; }
+  .user-badge .meta-role { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; }
+  .user-badge .avatar {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #c8953a 0%, #b8842a 100%);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .logout-btn {
+    background: transparent;
+    border: 1px solid #eaedf5;
+    color: #6b7280;
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .logout-btn:hover { background: #faf7f2; color: #0a1628; }
 
-/* ── Card list (students / admins) ── */
-.card-box{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);overflow:hidden;}
-.toolbar{display:flex;gap:10px;padding:18px 20px;border-bottom:1px solid var(--paper);flex-wrap:wrap;}
-.toolbar input[type=text]{flex:1;min-width:160px;padding:9px 12px;border:1.5px solid var(--mist);border-radius:8px;font-size:13px;}
-.tab-btn{padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;background:var(--paper);color:var(--navy);}
-.tab-btn.on{background:var(--ink);color:#fff;}
-.stu-card{border-bottom:1px solid var(--paper);}
-.stu-top{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;}
-.stu-avatar{width:38px;height:38px;border-radius:50%;background:var(--gold3);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
-.stu-info{flex:1;}
-.stu-name{font-weight:600;font-size:14px;}
-.stu-meta{font-size:12px;color:var(--gray);margin-top:2px;}
-.pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap;}
-.pill.pending{background:#fff4e0;color:#a06800;}
-.pill.approved{background:#eaf7ef;color:var(--green);}
-.pill.rejected{background:#fdeceb;color:var(--red);}
-.stu-details{display:none;padding:0 20px 20px 72px;}
-.stu-details.show{display:block;}
-.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
-.detail-cell{font-size:12.5px;}
-.detail-label{color:var(--gray);margin-bottom:2px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
-.action-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-.action-row input{flex:1;min-width:160px;padding:9px 12px;border:1.5px solid var(--mist);border-radius:8px;font-size:13px;}
-.btn-sm{padding:9px 16px;border-radius:8px;font-size:12.5px;font-weight:600;}
-.btn-approve{background:var(--green);color:#fff;}
-.btn-reject{background:var(--red);color:#fff;}
-.empty-state{padding:50px 20px;text-align:center;color:var(--gray);font-size:13.5px;}
+  .content { padding: 32px; max-width: 1400px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .view-header { margin-bottom: 24px; }
+  .view-header h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+  .view-header .sub { color: #6b7280; font-size: 14px; }
 
-/* ── Admins management ── */
-.admin-row{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--paper);}
-.admin-row:last-child{border-bottom:none;}
-.btn-del{background:#fdeceb;color:var(--red);}
-.add-admin-card{background:#fff;border-radius:14px;padding:22px;margin-top:20px;box-shadow:0 2px 10px rgba(0,0,0,.04);max-width:420px;}
-.add-admin-card h3{font-size:15px;font-weight:700;margin-bottom:16px;}
-.row-3{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  /* Stat cards */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: #fff;
+    border: 1px solid #eaedf5;
+    border-radius: 12px;
+    padding: 22px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .stat-card .label {
+    font-size: 12px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .stat-card .value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #0a1628;
+    font-family: 'Playfair Display', Georgia, serif;
+    line-height: 1;
+  }
+  .stat-card .unit { font-size: 13px; color: #6b7280; margin-top: 6px; }
+  .stat-card.attention {
+    border-color: #c8953a;
+    background: linear-gradient(135deg, #fffbf4 0%, #fff 100%);
+  }
+  .stat-card.attention .value { color: #c8953a; }
 
-@media (max-width:900px){
-  .kpi-row{grid-template-columns:repeat(2,1fr);}
-  .detail-grid{grid-template-columns:repeat(2,1fr);}
-  .sidebar{width:72px;}
-  .sb-logo,.sb-role,.sb-nav-item span{display:none;}
-  .sb-nav-item{justify-content:center;}
-  .main{padding:24px 16px;}
-}
+  /* Panels */
+  .panel {
+    background: #fff;
+    border: 1px solid #eaedf5;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 18px;
+  }
+  .panel h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #0a1628;
+  }
+  .panel .panel-sub {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 16px;
+  }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #f0f2f7; font-size: 13.5px; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; color: #6b7280; font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+  td .status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  td .status.pending { background: #fef3c7; color: #92400e; }
+  td .status.approved { background: #d1fae5; color: #065f46; }
+  td .status.rejected { background: #fee2e2; color: #991b1b; }
+  td .row-actions { display: flex; gap: 6px; }
+  td .btn-row {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  td .btn-approve { background: #0e7e44; color: #fff; }
+  td .btn-approve:hover { background: #0a6635; }
+  td .btn-reject { background: #fff; color: #c0392b; border: 1px solid #f1c2bc; }
+  td .btn-reject:hover { background: #fee2e2; }
+
+  /* Coming soon */
+  .coming-soon {
+    background: linear-gradient(135deg, #faf7f2 0%, #fff8ec 100%);
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 60px 40px;
+    text-align: center;
+  }
+  .coming-soon-icon { font-size: 50px; margin-bottom: 14px; }
+  .coming-soon h2 {
+    color: #c8953a;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+  .coming-soon p { color: #6b7280; font-size: 14px; max-width: 480px; margin: 0 auto 16px; line-height: 1.6; }
+  .coming-soon .planned {
+    display: inline-block;
+    background: #fff;
+    border: 1px solid #eaedf5;
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-top: 8px;
+    text-align: left;
+    max-width: 480px;
+  }
+  .coming-soon .planned strong { color: #0a1628; font-size: 12.5px; }
+  .coming-soon .planned ul { list-style: none; margin-top: 8px; }
+  .coming-soon .planned li {
+    font-size: 13px;
+    color: #6b7280;
+    padding: 4px 0;
+    padding-left: 18px;
+    position: relative;
+  }
+  .coming-soon .planned li::before { content: "•"; color: #c8953a; position: absolute; left: 6px; font-weight: 700; }
+
+  /* Chart placeholder */
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 180px;
+    padding: 16px 0;
+  }
+  .chart-bar {
+    flex: 1;
+    background: linear-gradient(180deg, #c8953a 0%, #d4a553 100%);
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    position: relative;
+    transition: opacity 0.2s;
+  }
+  .chart-bar:hover { opacity: 0.85; }
+  .chart-bar .bar-label {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+  .chart-bar .bar-value {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #0a1628;
+    font-weight: 700;
+  }
+
+  /* Loading */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(250,247,242,0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: opacity 0.3s;
+  }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #eaedf5;
+    border-top-color: #c8953a;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Mobile */
+  @media (max-width: 900px) {
+    .app-shell.show { grid-template-columns: 1fr; }
+    .sidebar {
+      position: static;
+      height: auto;
+      padding: 12px 0;
+    }
+    .sidebar-brand { padding-bottom: 14px; margin-bottom: 8px; }
+    .nav-item { padding: 9px 24px; font-size: 13px; }
+    .content { padding: 18px; }
+    .topbar { padding: 14px 18px; }
+    .user-badge .meta { display: none; }
+  }
 </style>
 </head>
 <body>
 
-<!-- ══════════════ LOGIN SCREEN ══════════════ -->
-<div id="loginScreen">
+<!-- ────────── LOGIN ────────── -->
+<div class="login-screen" id="loginScreen">
   <div class="login-card">
-    <div class="login-logo brand">Edu<span>Mitra</span></div>
-    <div class="login-sub">Admin Portal</div>
-    <div class="alert" id="loginAlert"></div>
-    <div class="field">
-      <label>Email</label>
-      <input type="email" id="adminEmail" placeholder="you@edumitra.in">
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input type="password" id="adminPass" placeholder="••••••••">
-    </div>
-    <button class="btn-gold" onclick="doAdminLogin()">Sign In</button>
+    <h1>EduMitra Admin</h1>
+    <p class="login-sub">Sign in to the operations panel.</p>
+    <div class="login-error" id="loginError"></div>
+    <label>Email</label>
+    <input type="email" id="loginEmail" autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="loginPassword" autocomplete="current-password">
+    <button onclick="doLogin()" id="loginBtn">Sign in</button>
   </div>
 </div>
 
-<!-- ══════════════ DASHBOARD ══════════════ -->
-<div id="dashboard">
-  <div class="shell">
-    <div class="sidebar">
-      <div class="sb-logo brand">Edu<span>Mitra</span></div>
-      <div class="sb-role" id="sbRole">Admin</div>
-      <button class="sb-nav-item active" id="nav-overview" onclick="switchPane('overview')"><i class="ri-bar-chart-2-line"></i><span>Overview</span></button>
-      <button class="sb-nav-item" id="nav-students" onclick="switchPane('students')"><i class="ri-graduation-cap-line"></i><span>Students</span></button>
-      <button class="sb-nav-item" id="nav-admins" onclick="switchPane('admins')" style="display:none;"><i class="ri-shield-user-line"></i><span>Manage Admins</span></button>
-      <div class="sb-bottom">
-        <button class="sb-nav-item" onclick="logoutAdmin()"><i class="ri-logout-box-line"></i><span>Log out</span></button>
+<!-- ────────── APP SHELL ────────── -->
+<div class="app-shell" id="appShell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-badge">EM</div>
+      <div class="brand-text">EduMitra<small>Super Admin</small></div>
+    </div>
+
+    <div class="sidebar-section-label">Operations</div>
+    <div class="nav-item active" data-view="overview" onclick="switchView('overview')">
+      <span class="icon">📊</span> <span>Platform Overview</span>
+    </div>
+    <div class="nav-item" data-view="counsellors" onclick="switchView('counsellors')">
+      <span class="icon">👥</span> <span>Counsellor Management</span>
+    </div>
+    <div class="nav-item" data-view="sessions" onclick="switchView('sessions')">
+      <span class="icon">📅</span> <span>Session &amp; Request Control</span>
+    </div>
+    <div class="nav-item" data-view="ratings" onclick="switchView('ratings')">
+      <span class="icon">🔒</span> <span>Confidential Rating Vault</span>
+    </div>
+
+    <div class="sidebar-section-label">Platform</div>
+    <div class="nav-item" data-view="users" onclick="switchView('users')">
+      <span class="icon">🎓</span> <span>Users &amp; Services</span>
+    </div>
+    <div class="nav-item" data-view="analytics" onclick="switchView('analytics')">
+      <span class="icon">📈</span> <span>Analytics &amp; Reports</span>
+    </div>
+    <div class="nav-item" data-view="settings" onclick="switchView('settings')">
+      <span class="icon">⚙️</span> <span>System Settings</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2 id="topbarTitle">Platform Overview</h2>
+        <div class="breadcrumb" id="topbarBreadcrumb">Operations / Platform Overview</div>
+      </div>
+      <div class="user-badge">
+        <div class="meta">
+          <div class="meta-name" id="userName">—</div>
+          <div class="meta-role" id="userRole">Super Admin</div>
+        </div>
+        <div class="avatar" id="userAvatar">?</div>
+        <button class="logout-btn" onclick="doLogout()">Log out</button>
       </div>
     </div>
 
-    <div class="main">
+    <div class="content">
 
-      <!-- OVERVIEW -->
-      <div class="pane show" id="pane-overview">
-        <div class="page-head"><h1>Overview</h1><p>Site-wide signups and verification status.</p></div>
-        <div class="kpi-row">
-          <div class="kpi-card"><div class="kpi-num" id="kpi-total">–</div><div class="kpi-label">Total Students</div></div>
-          <div class="kpi-card k-blue"><div class="kpi-num" id="kpi-pending">–</div><div class="kpi-label">Pending Review</div></div>
-          <div class="kpi-card k-green"><div class="kpi-num" id="kpi-approved">–</div><div class="kpi-label">Approved</div></div>
-          <div class="kpi-card k-red"><div class="kpi-num" id="kpi-rejected">–</div><div class="kpi-label">Rejected</div></div>
+      <!-- ════════ Platform Overview ════════ -->
+      <section class="view active" id="view-overview">
+        <div class="view-header">
+          <h1>Platform Overview</h1>
+          <div class="sub">A live snapshot of EduMitra across all three service pillars.</div>
         </div>
-        <div class="chart-card">
-          <h3>Signups — last 14 days</h3>
-          <div class="bars" id="signupChart"></div>
-        </div>
-        <div class="chart-card">
-          <h3>Recent Registrations</h3>
-          <div id="recentList"></div>
-        </div>
-      </div>
 
-      <!-- STUDENTS -->
-      <div class="pane" id="pane-students">
-        <div class="page-head"><h1>Students</h1><p>Review verification submissions and approve or reject accounts.</p></div>
-        <div class="card-box">
-          <div class="toolbar">
-            <button class="tab-btn on" data-tab="all" onclick="setStudentTab('all')">All</button>
-            <button class="tab-btn" data-tab="pending" onclick="setStudentTab('pending')">Pending</button>
-            <button class="tab-btn" data-tab="approved" onclick="setStudentTab('approved')">Approved</button>
-            <button class="tab-btn" data-tab="rejected" onclick="setStudentTab('rejected')">Rejected</button>
-            <input type="text" id="studentSearch" placeholder="Search name or email…" oninput="renderStudents()">
+        <div class="stat-grid">
+          <div class="stat-card attention">
+            <div class="label">Pending Counsellor Verifications</div>
+            <div class="value" id="statPendingCounsellors">0</div>
+            <div class="unit">awaiting review</div>
           </div>
-          <div id="studentList"></div>
-        </div>
-      </div>
-
-      <!-- MANAGE ADMINS -->
-      <div class="pane" id="pane-admins">
-        <div class="page-head"><h1>Manage Admins</h1><p>Create or remove admin accounts. Only you, the super admin, can do this.</p></div>
-        <div class="card-box" id="adminListBox"></div>
-        <div class="add-admin-card">
-          <h3>Add a new admin</h3>
-          <div class="alert" id="addAdminAlert"></div>
-          <div class="field"><label>Name</label><input type="text" id="newAdminName" placeholder="Full name"></div>
-          <div class="row-3">
-            <div class="field"><label>Email</label><input type="email" id="newAdminEmail" placeholder="admin@edumitra.in"></div>
-            <div class="field"><label>Password</label><input type="password" id="newAdminPass" placeholder="At least 8 characters"></div>
+          <div class="stat-card attention">
+            <div class="label">Unassigned Requests</div>
+            <div class="value" id="statUnassigned">0</div>
+            <div class="unit">need a counsellor</div>
           </div>
-          <button class="btn-gold" onclick="addAdmin()">Create Admin</button>
+          <div class="stat-card">
+            <div class="label">Sessions Awaiting Approval Oversight</div>
+            <div class="value" id="statSessionsOversight">0</div>
+            <div class="unit">minutes the student rejected or commented on</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Active Counsellors</div>
+            <div class="value" id="statActiveCounsellors">0</div>
+            <div class="unit">verified &amp; available</div>
+          </div>
         </div>
-      </div>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="label">Total Students</div>
+            <div class="value" id="statTotalStudents">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Pending Approvals</div>
+            <div class="value" id="statPendingStudents">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Approved Students</div>
+            <div class="value" id="statApprovedStudents">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Rejected Students</div>
+            <div class="value" id="statRejectedStudents">0</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Service Pillars</h3>
+          <div class="panel-sub">Three core services managed by EduMitra. Click into Users &amp; Services to manage each pillar.</div>
+          <div class="stat-grid" style="margin-bottom:0;">
+            <div class="stat-card"><div class="label">Study Abroad</div><div class="value">—</div><div class="unit">Coming soon</div></div>
+            <div class="stat-card"><div class="label">Placement</div><div class="value">—</div><div class="unit">Coming soon</div></div>
+            <div class="stat-card"><div class="label">Job Switch</div><div class="value">—</div><div class="unit">Coming soon</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ Counsellor Management ════════ -->
+      <section class="view" id="view-counsellors">
+        <div class="view-header">
+          <h1>Counsellor Management</h1>
+          <div class="sub">Verify certifications, manage status, and oversee counsellor allocation rules.</div>
+        </div>
+        <div class="coming-soon">
+          <div class="coming-soon-icon">👥</div>
+          <h2>Coming Soon</h2>
+          <p>The counsellor registration and verification workflow hasn't been built yet. Once live, this is where you'll handle every counsellor on the platform.</p>
+          <div class="planned">
+            <strong>What this will include:</strong>
+            <ul>
+              <li>Review pending counsellor applications &amp; certifications</li>
+              <li>Approve / reject / suspend counsellor accounts</li>
+              <li>Configure allocation rules (region, service category, certification)</li>
+              <li>Aggregate performance per counsellor (sessions, ratings, approval rate)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ Sessions ════════ -->
+      <section class="view" id="view-sessions">
+        <div class="view-header">
+          <h1>Session &amp; Request Control</h1>
+          <div class="sub">Assign counsellors, monitor sessions, and resolve approval disputes.</div>
+        </div>
+        <div class="coming-soon">
+          <div class="coming-soon-icon">📅</div>
+          <h2>Coming Soon</h2>
+          <p>Session booking and counsellor assignment require the counsellor and booking systems to be live. Build counsellor management first.</p>
+          <div class="planned">
+            <strong>What this will include:</strong>
+            <ul>
+              <li>Request queue with manual / auto counsellor assignment</li>
+              <li>Live / upcoming / completed sessions view</li>
+              <li>Session minutes review before they reach the student</li>
+              <li>Dispute resolution for rejected / commented minutes</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ Ratings ════════ -->
+      <section class="view" id="view-ratings">
+        <div class="view-header">
+          <h1>Confidential Rating Vault</h1>
+          <div class="sub">Private ratings &amp; feedback hidden from counsellors. Used for quality assurance.</div>
+        </div>
+        <div class="coming-soon">
+          <div class="coming-soon-icon">🔒</div>
+          <h2>Coming Soon</h2>
+          <p>Requires sessions and ratings infrastructure to be built first. This view will be locked to super admin role only.</p>
+          <div class="planned">
+            <strong>What this will include:</strong>
+            <ul>
+              <li>Private student ratings per counsellor (hidden from counsellor view)</li>
+              <li>Alert triggers for counsellors with consistently low ratings</li>
+              <li>"Right Action" workflows: retraining, warning, suspension</li>
+              <li>Student feedback comments analysis</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════ Users & Services ════════ -->
+      <section class="view" id="view-users">
+        <div class="view-header">
+          <h1>Users &amp; Services</h1>
+          <div class="sub">All registered students, their service pillar, and session history.</div>
+        </div>
+
+        <div class="panel">
+          <h3>Registered Students</h3>
+          <div class="panel-sub">Approve newly signed-up students so they can access their dashboard.</div>
+          <table id="studentsTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Sign-in</th>
+                <th>Status</th>
+                <th>Registered</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTbody">
+              <tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ════════ Analytics ════════ -->
+      <section class="view" id="view-analytics">
+        <div class="view-header">
+          <h1>Analytics &amp; Reports</h1>
+          <div class="sub">Platform health, signups, and service breakdown.</div>
+        </div>
+
+        <div class="panel">
+          <h3>Student Signups — Last 14 Days</h3>
+          <div class="panel-sub">Number of new student accounts created each day.</div>
+          <div class="chart-bars" id="signupsChart" style="margin-bottom:30px;"></div>
+        </div>
+
+        <div class="coming-soon">
+          <div class="coming-soon-icon">📈</div>
+          <h2>More analytics coming soon</h2>
+          <p>Revenue, retention, service breakdown (Study Abroad / Placement / Job Switch), and geographic heatmap will appear here once those systems are live.</p>
+        </div>
+      </section>
+
+      <!-- ════════ Settings ════════ -->
+      <section class="view" id="view-settings">
+        <div class="view-header">
+          <h1>System Settings</h1>
+          <div class="sub">Admin accounts, notifications, and platform configuration.</div>
+        </div>
+
+        <div class="panel" id="adminPanel">
+          <h3>Admin Accounts</h3>
+          <div class="panel-sub">Create additional admin accounts who can approve students. Super admin only.</div>
+          <table id="adminsTable" style="margin-bottom:16px;">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Created</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="adminsTbody">
+              <tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>
+            </tbody>
+          </table>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding-top:12px;border-top:1px solid #f0f2f7;">
+            <input type="text" id="newAdminName" placeholder="Name" style="flex:1;min-width:140px;padding:9px 12px;border:1px solid #eaedf5;border-radius:7px;font-size:13px;font-family:inherit;">
+            <input type="email" id="newAdminEmail" placeholder="Email" style="flex:1;min-width:160px;padding:9px 12px;border:1px solid #eaedf5;border-radius:7px;font-size:13px;font-family:inherit;">
+            <input type="password" id="newAdminPass" placeholder="Password (8+ chars)" style="flex:1;min-width:140px;padding:9px 12px;border:1px solid #eaedf5;border-radius:7px;font-size:13px;font-family:inherit;">
+            <button onclick="addAdmin()" style="padding:9px 18px;background:#0a1628;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Add admin</button>
+          </div>
+          <div id="adminMsg" style="font-size:12.5px;color:#6b7280;margin-top:10px;"></div>
+        </div>
+
+        <div class="coming-soon">
+          <div class="coming-soon-icon">⚙️</div>
+          <h2>More settings coming soon</h2>
+          <p>Role permissions (Finance Admin / Content Admin), notification configuration (email / SMS), and content management (uploadable resources for students) will appear here.</p>
+        </div>
+      </section>
 
     </div>
-  </div>
+  </main>
 </div>
+
+<div class="loading-overlay hidden" id="loadingOverlay"><div class="spinner"></div></div>
 
 <script>
-let _adminUser = null;
-let _students = [];
-let _studentTab = 'all';
+let _me = null;
 
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    const res = await fetch('/api/admin/me');
-    const data = await res.json();
-    if (data.loggedIn) enterDashboard(data.user);
-  } catch (e) { /* not logged in */ }
-});
+const viewTitles = {
+  overview:    { title: 'Platform Overview',         crumb: 'Operations / Platform Overview' },
+  counsellors: { title: 'Counsellor Management',     crumb: 'Operations / Counsellor Management' },
+  sessions:    { title: 'Session & Request Control', crumb: 'Operations / Session & Request Control' },
+  ratings:     { title: 'Confidential Rating Vault', crumb: 'Operations / Confidential Rating Vault' },
+  users:       { title: 'Users & Services',          crumb: 'Platform / Users & Services' },
+  analytics:   { title: 'Analytics & Reports',       crumb: 'Platform / Analytics & Reports' },
+  settings:    { title: 'System Settings',           crumb: 'Platform / System Settings' }
+};
 
-function showAlert(id, type, msg) {
-  const el = document.getElementById(id);
-  el.className = 'alert show ' + type;
-  el.textContent = msg;
-}
-function clearAlert(id) {
-  document.getElementById(id).className = 'alert';
-}
-function escapeHtml(s) {
-  return (s || '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function initials(name) {
-  const parts = (name || '?').trim().split(/\s+/);
-  return parts.length >= 2 ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
-}
-function studentStatus(u) {
-  if (u.approved) return 'approved';
-  if (u.verifyData?.verificationStatus === 'rejected') return 'rejected';
-  return 'pending';
-}
-function pill(status) {
-  const label = status === 'approved' ? '✓ Approved' : status === 'rejected' ? '✕ Rejected' : '⏳ Pending';
-  return '<span class="pill ' + status + '">' + label + '</span>';
-}
-function fmtDate(ts) {
-  return ts ? new Date(ts).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector('[data-view="' + name + '"]').classList.add('active');
+  const meta = viewTitles[name] || { title: name, crumb: name };
+  document.getElementById('topbarTitle').textContent = meta.title;
+  document.getElementById('topbarBreadcrumb').textContent = meta.crumb;
+
+  // Load data for views that need it
+  if (name === 'users')      loadStudents();
+  if (name === 'analytics')  loadAnalytics();
+  if (name === 'settings')   loadAdmins();
 }
 
-/* ── LOGIN / LOGOUT ── */
-async function doAdminLogin() {
-  clearAlert('loginAlert');
-  const email = document.getElementById('adminEmail').value.trim();
-  const password = document.getElementById('adminPass').value.trim();
-  if (!email || !password) return showAlert('loginAlert','error','Please enter both email and password.');
+/* ────────── AUTH ────────── */
 
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginError');
+  err.classList.remove('show');
+  if (!email || !password) {
+    err.textContent = 'Enter email and password.';
+    err.classList.add('show');
+    return;
+  }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
   try {
     const res = await fetch('/api/admin/login', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    if (!res.ok) return showAlert('loginAlert','error', data.error || 'Login failed.');
-    enterDashboard(data.user);
+    if (!res.ok) {
+      err.textContent = data.error || 'Login failed.';
+      err.classList.add('show');
+      return;
+    }
+    _me = data.user;
+    enterApp();
   } catch (e) {
-    showAlert('loginAlert','error','Could not reach the server. Is it running?');
+    err.textContent = 'Could not reach the server.';
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in';
   }
 }
 
-function enterDashboard(user) {
-  _adminUser = user;
+async function doLogout() {
+  try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
+  _me = null;
+  document.getElementById('appShell').classList.remove('show');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+function enterApp() {
   document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('sbRole').textContent = user.role === 'superadmin' ? 'Super Admin' : 'Admin';
-  document.getElementById('nav-admins').style.display = user.role === 'superadmin' ? 'flex' : 'none';
+  document.getElementById('appShell').classList.add('show');
+  // Populate header
+  const name = _me.name || _me.email || 'Admin';
+  document.getElementById('userName').textContent = name;
+  document.getElementById('userRole').textContent = _me.role === 'superadmin' ? 'Super Admin' : 'Admin';
+  document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+  // Hide admin panel for non-superadmins
+  if (_me.role !== 'superadmin') {
+    const ap = document.getElementById('adminPanel');
+    if (ap) ap.style.display = 'none';
+  }
   loadOverview();
 }
 
-async function logoutAdmin() {
-  await fetch('/api/logout', { method: 'POST' });
-  location.reload();
-}
+/* ────────── DATA LOADERS ────────── */
 
-/* ── NAV ── */
-function switchPane(name) {
-  document.querySelectorAll('.sb-nav-item').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.pane').forEach(p => p.classList.remove('show'));
-  document.getElementById('nav-' + name).classList.add('active');
-  document.getElementById('pane-' + name).classList.add('show');
-  if (name === 'overview') loadOverview();
-  if (name === 'students') loadStudents();
-  if (name === 'admins') loadAdmins();
-}
-
-/* ── OVERVIEW ── */
 async function loadOverview() {
-  const res = await fetch('/api/admin/analytics');
-  if (!res.ok) return;
-  const d = await res.json();
-
-  document.getElementById('kpi-total').textContent = d.total;
-  document.getElementById('kpi-pending').textContent = d.pending;
-  document.getElementById('kpi-approved').textContent = d.approved;
-  document.getElementById('kpi-rejected').textContent = d.rejected;
-
-  const max = Math.max(1, ...d.signupsByDay.map(x => x.count));
-  document.getElementById('signupChart').innerHTML = d.signupsByDay.map(x => {
-    const h = Math.round((x.count / max) * 100);
-    const label = new Date(x.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short' });
-    return '<div class="bar-col"><div class="bar" style="height:' + Math.max(h,3) + '%" title="' + x.count + ' signups"></div><div class="bar-day">' + label + '</div></div>';
-  }).join('');
-
-  const recentEl = document.getElementById('recentList');
-  if (!d.recent.length) {
-    recentEl.innerHTML = '<div class="empty-state">No registrations yet.</div>';
-  } else {
-    recentEl.innerHTML = d.recent.map(u => {
-      const status = studentStatus(u);
-      return '<div class="stu-top" style="cursor:default;">' +
-        '<div class="stu-avatar">' + initials(u.name) + '</div>' +
-        '<div class="stu-info"><div class="stu-name">' + escapeHtml(u.name) + '</div>' +
-        '<div class="stu-meta">' + escapeHtml(u.email) + ' · ' + fmtDate(u.registeredAt) + '</div></div>' +
-        pill(status) + '</div>';
-    }).join('');
-  }
+  try {
+    const res = await fetch('/api/admin/analytics');
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById('statTotalStudents').textContent    = data.total || 0;
+    document.getElementById('statPendingStudents').textContent  = data.pending || 0;
+    document.getElementById('statApprovedStudents').textContent = data.approved || 0;
+    document.getElementById('statRejectedStudents').textContent = data.rejected || 0;
+    // Counsellor stats — no backend yet, always 0
+    document.getElementById('statPendingCounsellors').textContent = 0;
+    document.getElementById('statActiveCounsellors').textContent  = 0;
+    document.getElementById('statUnassigned').textContent         = 0;
+    document.getElementById('statSessionsOversight').textContent  = 0;
+  } catch (e) { console.error(e); }
 }
 
-/* ── STUDENTS ── */
 async function loadStudents() {
-  const res = await fetch('/api/admin/students');
-  if (!res.ok) return;
-  const d = await res.json();
-  _students = d.students;
-  renderStudents();
-}
-
-function setStudentTab(tab) {
-  _studentTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  renderStudents();
-}
-
-function renderStudents() {
-  const search = document.getElementById('studentSearch').value.toLowerCase();
-  const list = document.getElementById('studentList');
-
-  let rows = _students.filter(u => {
-    const status = studentStatus(u);
-    const matchTab = _studentTab === 'all' || status === _studentTab;
-    const matchSearch = !search || (u.name||'').toLowerCase().includes(search) || (u.email||'').toLowerCase().includes(search);
-    return matchTab && matchSearch;
-  }).sort((a,b) => (b.registeredAt||0) - (a.registeredAt||0));
-
-  if (!rows.length) {
-    list.innerHTML = '<div class="empty-state">No students match this view.</div>';
-    return;
+  const tbody = document.getElementById('studentsTbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
+  try {
+    const res = await fetch('/api/admin/students');
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#991b1b;padding:24px;">Could not load students.</td></tr>';
+      return;
+    }
+    const data = await res.json();
+    const list = data.students || [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">No students registered yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(s => {
+      const status = s.approved ? 'approved' :
+        (s.verifyData && s.verifyData.verificationStatus === 'rejected') ? 'rejected' : 'pending';
+      const provider = s.provider === 'google' ? 'Google' :
+                       s.provider === 'linkedin' ? 'LinkedIn' :
+                       s.provider === 'password' ? 'Email' : '—';
+      const regDate = s.registeredAt ? new Date(s.registeredAt).toLocaleDateString() : '—';
+      return `<tr>
+        <td>${escapeHtml(s.name || '—')}</td>
+        <td>${escapeHtml(s.email)}</td>
+        <td>${provider}</td>
+        <td><span class="status ${status}">${status}</span></td>
+        <td>${regDate}</td>
+        <td style="text-align:right;">
+          <div class="row-actions" style="justify-content:flex-end;">
+            ${status !== 'approved' ? `<button class="btn-row btn-approve" onclick="approveStudent('${escapeAttr(s.email)}')">Approve</button>` : ''}
+            ${status !== 'rejected' ? `<button class="btn-row btn-reject" onclick="rejectStudent('${escapeAttr(s.email)}')">Reject</button>` : ''}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#991b1b;padding:24px;">Network error.</td></tr>';
   }
-
-  list.innerHTML = rows.map(u => {
-    const status = studentStatus(u);
-    const vd = u.verifyData || {};
-    const cardId = 'stu-' + u.email.replace(/[^a-z0-9]/gi,'');
-    const details = vd.phone ? (
-      '<div class="detail-grid">' +
-        detailCell('Phone', vd.phone) + detailCell('City / State', (vd.city||'—') + ', ' + (vd.state||'—')) +
-        detailCell('Qualification', vd.qual) + detailCell('Field', vd.field) +
-        detailCell('Target Country', vd.country) + detailCell('Intake', vd.intake) +
-      '</div>'
-    ) : '<div style="color:#b0b8d0;font-size:12.5px;margin-bottom:14px;">This student hasn\'t submitted the verification form yet.</div>';
-
-    const actions = '<div class="action-row">' +
-      '<input type="text" id="note-' + cardId + '" placeholder="Add a note (optional)…">' +
-      '<button class="btn-sm btn-approve" onclick="actOnStudent(\'' + u.email + '\',\'approve\',\'' + cardId + '\')">✓ Approve</button>' +
-      '<button class="btn-sm btn-reject" onclick="actOnStudent(\'' + u.email + '\',\'reject\',\'' + cardId + '\')">✕ Reject</button>' +
-    '</div>';
-
-    return '<div class="stu-card">' +
-      '<div class="stu-top" onclick="toggleStu(\'' + cardId + '\')">' +
-        '<div class="stu-avatar">' + initials(u.name) + '</div>' +
-        '<div class="stu-info"><div class="stu-name">' + escapeHtml(u.name) + '</div>' +
-        '<div class="stu-meta">' + escapeHtml(u.email) + ' · Registered ' + fmtDate(u.registeredAt) + '</div></div>' +
-        pill(status) +
-      '</div>' +
-      '<div class="stu-details" id="det-' + cardId + '">' + details + actions + '</div>' +
-    '</div>';
-  }).join('');
 }
 
-function detailCell(label, val) {
-  return '<div class="detail-cell"><div class="detail-label">' + label + '</div><div>' + escapeHtml(val || '—') + '</div></div>';
+async function approveStudent(email) {
+  try {
+    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    loadStudents();
+    loadOverview();
+  } catch(e) { alert('Failed to approve.'); }
+}
+async function rejectStudent(email) {
+  if (!confirm('Reject this student?')) return;
+  try {
+    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/reject', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    loadStudents();
+    loadOverview();
+  } catch(e) { alert('Failed to reject.'); }
 }
 
-function toggleStu(cardId) {
-  document.getElementById('det-' + cardId).classList.toggle('show');
+async function loadAnalytics() {
+  try {
+    const res = await fetch('/api/admin/analytics');
+    if (!res.ok) return;
+    const data = await res.json();
+    const chart = document.getElementById('signupsChart');
+    const days = data.signupsByDay || [];
+    const max = Math.max(1, ...days.map(d => d.count));
+    chart.innerHTML = days.map(d => {
+      const h = (d.count / max) * 100;
+      const label = d.date.slice(5);
+      return `<div class="chart-bar" style="height:${h}%;" title="${d.date}: ${d.count}">
+        ${d.count > 0 ? `<div class="bar-value">${d.count}</div>` : ''}
+        <div class="bar-label">${label}</div>
+      </div>`;
+    }).join('');
+  } catch (e) { console.error(e); }
 }
 
-async function actOnStudent(email, action, cardId) {
-  const note = document.getElementById('note-' + cardId)?.value || '';
-  const res = await fetch('/api/admin/students/' + encodeURIComponent(email) + '/' + action, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ note })
-  });
-  if (res.ok) { await loadStudents(); loadOverview(); }
-  else alert('Something went wrong — please try again.');
-}
-
-/* ── MANAGE ADMINS (super admin only) ── */
 async function loadAdmins() {
-  const res = await fetch('/api/superadmin/admins');
-  if (!res.ok) return;
-  const d = await res.json();
-  const box = document.getElementById('adminListBox');
-
-  const superRow = '<div class="admin-row">' +
-    '<div class="stu-avatar">SA</div>' +
-    '<div class="stu-info"><div class="stu-name">Super Admin</div><div class="stu-meta">' + escapeHtml(d.superAdminEmail) + '</div></div>' +
-    '<span class="pill approved">Root account</span></div>';
-
-  const adminRows = d.admins.map(a =>
-    '<div class="admin-row">' +
-      '<div class="stu-avatar">' + initials(a.name) + '</div>' +
-      '<div class="stu-info"><div class="stu-name">' + escapeHtml(a.name) + '</div><div class="stu-meta">' + escapeHtml(a.email) + ' · Added ' + fmtDate(a.createdAt) + '</div></div>' +
-      '<button class="btn-sm btn-del" onclick="deleteAdmin(\'' + a.email + '\')">Remove</button>' +
-    '</div>'
-  ).join('');
-
-  box.innerHTML = superRow + (adminRows || '<div class="empty-state">No additional admins yet — add one below.</div>');
+  if (_me && _me.role !== 'superadmin') return;
+  const tbody = document.getElementById('adminsTbody');
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
+  try {
+    const res = await fetch('/api/superadmin/admins');
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Could not load admins.</td></tr>';
+      return;
+    }
+    const data = await res.json();
+    const list = data.admins || [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:20px;">No additional admins. The super admin (' + escapeHtml(data.superAdminEmail || '') + ') is the only account.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(a => `<tr>
+      <td>${escapeHtml(a.name || '—')}</td>
+      <td>${escapeHtml(a.email)}</td>
+      <td>${a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '—'}</td>
+      <td style="text-align:right;"><button class="btn-row btn-reject" onclick="removeAdmin('${escapeAttr(a.email)}')">Remove</button></td>
+    </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Network error.</td></tr>';
+  }
 }
 
 async function addAdmin() {
-  clearAlert('addAdminAlert');
   const name = document.getElementById('newAdminName').value.trim();
   const email = document.getElementById('newAdminEmail').value.trim();
-  const password = document.getElementById('newAdminPass').value.trim();
-
-  const res = await fetch('/api/superadmin/admins', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ name, email, password })
-  });
-  const data = await res.json();
-  if (!res.ok) return showAlert('addAdminAlert','error', data.error || 'Could not create admin.');
-
-  showAlert('addAdminAlert','success','✓ Admin created.');
-  document.getElementById('newAdminName').value = '';
-  document.getElementById('newAdminEmail').value = '';
-  document.getElementById('newAdminPass').value = '';
-  loadAdmins();
+  const password = document.getElementById('newAdminPass').value;
+  const msg = document.getElementById('adminMsg');
+  msg.style.color = '#6b7280';
+  if (!name || !email || !password) { msg.textContent = 'Fill all three fields.'; return; }
+  try {
+    const res = await fetch('/api/superadmin/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.style.color = '#991b1b';
+      msg.textContent = data.error || 'Failed to add admin.';
+      return;
+    }
+    msg.style.color = '#065f46';
+    msg.textContent = 'Admin added.';
+    document.getElementById('newAdminName').value = '';
+    document.getElementById('newAdminEmail').value = '';
+    document.getElementById('newAdminPass').value = '';
+    loadAdmins();
+  } catch (e) {
+    msg.style.color = '#991b1b';
+    msg.textContent = 'Network error.';
+  }
 }
+
+async function removeAdmin(email) {
+  if (!confirm('Remove admin ' + email + '?')) return;
+  try {
+    await fetch('/api/superadmin/admins/' + encodeURIComponent(email), { method: 'DELETE' });
+    loadAdmins();
+  } catch (e) { alert('Failed to remove.'); }
+}
+
+/* ────────── HELPERS ────────── */
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(str) {
+  return String(str).replace(/['"\\]/g, '\\$&');
+}
+
+/* ────────── INIT ────────── */
+
+(async function() {
+  try {
+    const res = await fetch('/api/admin/me');
+    const data = await res.json();
+    if (data.loggedIn) {
+      _me = data.user;
+      enterApp();
+    }
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>
