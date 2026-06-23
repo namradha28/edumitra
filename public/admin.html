@@ -572,20 +572,34 @@
       <section class="view" id="view-counsellors">
         <div class="view-header">
           <h1>Counsellor Management</h1>
-          <div class="sub">Verify certifications, manage status, and oversee counsellor allocation rules.</div>
+          <div class="sub">Add new counsellors. Login credentials are auto-generated and emailed to them. Super admin only.</div>
         </div>
-        <div class="coming-soon">
-          <div class="coming-soon-icon">👥</div>
-          <h2>Coming Soon</h2>
-          <p>The counsellor registration and verification workflow hasn't been built yet. Once live, this is where you'll handle every counsellor on the platform.</p>
-          <div class="planned">
-            <strong>What this will include:</strong>
-            <ul>
-              <li>Review pending counsellor applications &amp; certifications</li>
-              <li>Approve / reject / suspend counsellor accounts</li>
-              <li>Configure allocation rules (region, service category, certification)</li>
-              <li>Aggregate performance per counsellor (sessions, ratings, approval rate)</li>
-            </ul>
+
+        <div class="panel" id="counsellorPanel">
+          <h3>Counsellors</h3>
+          <div class="panel-sub">Each counsellor you add here gets an automated welcome email with their login email and a temporary password. They can then log in at the counsellor portal.</div>
+          <table id="counsellorsTable" style="margin-bottom:16px;">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Added on</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="counsellorsTbody">
+              <tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>
+            </tbody>
+          </table>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding-top:12px;border-top:1px solid #f0f2f7;">
+            <input type="text" id="newCounsellorName" placeholder="Full name" style="flex:1;min-width:160px;padding:9px 12px;border:1px solid #eaedf5;border-radius:7px;font-size:13px;font-family:inherit;">
+            <input type="email" id="newCounsellorEmail" placeholder="Email address" style="flex:1.4;min-width:180px;padding:9px 12px;border:1px solid #eaedf5;border-radius:7px;font-size:13px;font-family:inherit;">
+            <button id="addCounsellorBtn" onclick="addCounsellor()" style="padding:9px 20px;background:#0a1628;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Add counsellor</button>
+          </div>
+          <div id="counsellorMsg" style="font-size:12.5px;color:#6b7280;margin-top:10px;line-height:1.5;"></div>
+          <div style="font-size:11.5px;color:#6b7280;margin-top:14px;padding-top:12px;border-top:1px dashed #eaedf5;">
+            <strong>How this works:</strong> Enter the counsellor's name and email, then click Add. A 12-character temporary password is generated and emailed to them at the address you provided. They can log in at <code style="background:#faf7f2;padding:2px 6px;border-radius:3px;">/counsellor-login.html</code>.
           </div>
         </div>
       </section>
@@ -750,9 +764,10 @@ function switchView(name) {
   document.getElementById('topbarBreadcrumb').textContent = meta.crumb;
 
   // Load data for views that need it
-  if (name === 'users')      loadStudents();
-  if (name === 'analytics')  loadAnalytics();
-  if (name === 'settings')   loadAdmins();
+  if (name === 'users')        loadStudents();
+  if (name === 'analytics')    loadAnalytics();
+  if (name === 'settings')     loadAdmins();
+  if (name === 'counsellors')  loadCounsellors();
 }
 
 /* ────────── AUTH ────────── */
@@ -975,6 +990,92 @@ async function removeAdmin(email) {
     await fetch('/api/superadmin/admins/' + encodeURIComponent(email), { method: 'DELETE' });
     loadAdmins();
   } catch (e) { alert('Failed to remove.'); }
+}
+
+/* ────────── COUNSELLORS ────────── */
+
+async function loadCounsellors() {
+  if (_me && _me.role !== 'superadmin') {
+    document.getElementById('counsellorsTbody').innerHTML =
+      '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Super admin only.</td></tr>';
+    return;
+  }
+  const tbody = document.getElementById('counsellorsTbody');
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
+  try {
+    const res = await fetch('/api/superadmin/counsellors');
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Could not load counsellors.</td></tr>';
+      return;
+    }
+    const data = await res.json();
+    const list = data.counsellors || [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:20px;">No counsellors yet. Add the first one below.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(c => `<tr>
+      <td>${escapeHtml(c.name || '—')}</td>
+      <td>${escapeHtml(c.email)}</td>
+      <td>${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
+      <td style="text-align:right;"><button class="btn-row btn-reject" onclick="removeCounsellor('${escapeAttr(c.email)}')">Remove</button></td>
+    </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Network error.</td></tr>';
+  }
+}
+
+async function addCounsellor() {
+  const name = document.getElementById('newCounsellorName').value.trim();
+  const email = document.getElementById('newCounsellorEmail').value.trim();
+  const msg = document.getElementById('counsellorMsg');
+  const btn = document.getElementById('addCounsellorBtn');
+  msg.style.color = '#6b7280';
+  msg.textContent = '';
+  if (!name || !email) { msg.style.color = '#991b1b'; msg.textContent = 'Enter both name and email.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+  try {
+    const res = await fetch('/api/superadmin/counsellors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      msg.style.color = '#991b1b';
+      msg.textContent = data.error || 'Failed to add counsellor.';
+      return;
+    }
+    msg.style.color = '#065f46';
+    if (data.emailed === false && data.tempPassword) {
+      msg.innerHTML = '<strong>Counsellor added, but the email could not be sent.</strong><br>' +
+        'Share these credentials manually: <code style="background:#faf7f2;padding:2px 6px;border-radius:3px;">' +
+        escapeHtml(email) + '</code> / <code style="background:#faf7f2;padding:2px 6px;border-radius:3px;">' +
+        escapeHtml(data.tempPassword) + '</code>';
+    } else {
+      msg.textContent = 'Counsellor added. Welcome email with login credentials has been sent to ' + email + '.';
+    }
+    document.getElementById('newCounsellorName').value = '';
+    document.getElementById('newCounsellorEmail').value = '';
+    loadCounsellors();
+  } catch (e) {
+    msg.style.color = '#991b1b';
+    msg.textContent = 'Network error.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Add counsellor';
+  }
+}
+
+async function removeCounsellor(email) {
+  if (!confirm('Remove counsellor ' + email + '? They will lose access immediately.')) return;
+  try {
+    const res = await fetch('/api/superadmin/counsellors/' + encodeURIComponent(email), { method: 'DELETE' });
+    if (!res.ok) { alert('Failed to remove.'); return; }
+    loadCounsellors();
+  } catch (e) { alert('Network error.'); }
 }
 
 /* ────────── HELPERS ────────── */

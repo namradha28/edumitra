@@ -1,384 +1,398 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EduMitra — Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Dashboard — EduMitra</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #faf7f2;
-    color: #0a1628;
-    min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* Top header */
-  .dash-header {
-    background: #0a1628;
-    color: #fff;
-    padding: 16px 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  }
-  .dash-header .logo {
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    font-family: 'Playfair Display', Georgia, serif;
-  }
-  .dash-header .logo span { color: #c8953a; }
-  .dash-user {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .dash-user-name {
-    font-size: 14px;
-    color: rgba(255,255,255,0.85);
-  }
-  .dash-logout {
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.3);
-    color: #fff;
-    padding: 8px 18px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: inherit;
-    transition: background 0.2s;
-  }
-  .dash-logout:hover { background: rgba(255,255,255,0.1); }
-
-  /* Layout */
-  .dash-layout {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    min-height: calc(100vh - 65px);
-  }
-
-  /* Sidebar */
-  .dash-sidebar {
-    background: #fff;
-    border-right: 1px solid #e5e7eb;
-    padding: 24px 0;
-  }
-  .dash-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 24px;
-    cursor: pointer;
-    border-left: 3px solid transparent;
-    color: #4a5568;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.15s;
-    user-select: none;
-  }
-  .dash-nav-item:hover { background: #faf7f2; }
-  .dash-nav-item.active {
-    background: #faf7f2;
-    border-left-color: #c8953a;
-    color: #0a1628;
-    font-weight: 600;
-  }
-  .dash-nav-item .icon { font-size: 18px; }
-
-  /* Main content */
-  .dash-main {
-    padding: 32px;
-    max-width: 1100px;
-  }
-  .dash-section {
-    display: none;
-    background: #fff;
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  }
-  .dash-section.active { display: block; }
-  .dash-section h1 {
-    font-size: 26px;
-    margin-bottom: 6px;
-    color: #0a1628;
-    font-family: 'Playfair Display', Georgia, serif;
-    font-weight: 700;
-  }
-  .dash-section .subtitle {
-    color: #6b7280;
-    font-size: 14px;
-    margin-bottom: 32px;
-  }
-
-  /* Coming-soon placeholder */
-  .coming-soon {
-    background: linear-gradient(135deg, #faf7f2 0%, #fff8ec 100%);
-    border: 2px dashed #d1d5db;
-    border-radius: 12px;
-    padding: 70px 40px;
-    text-align: center;
-    color: #6b7280;
-  }
-  .coming-soon-icon { font-size: 56px; margin-bottom: 16px; }
-  .coming-soon h2 {
-    color: #c8953a;
-    margin-bottom: 12px;
-    font-size: 22px;
-    font-family: 'Playfair Display', Georgia, serif;
-  }
-  .coming-soon p { font-size: 14px; max-width: 380px; margin: 0 auto; line-height: 1.6; }
-
-  /* Profile grid */
-  .profile-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 20px;
-  }
-  .profile-field {
-    display: grid;
-    gap: 6px;
-  }
-  .profile-field label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.7px;
-    color: #6b7280;
-    font-weight: 700;
-  }
-  .profile-field .value {
-    padding: 13px 16px;
-    background: #faf7f2;
-    border-radius: 8px;
-    border: 1px solid #eaedf5;
-    font-size: 14px;
-    color: #0a1628;
-    word-break: break-word;
-  }
-  .approved-badge {
-    display: inline-block;
-    background: #d1fae5;
-    color: #065f46;
-    padding: 5px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-  }
-
-  /* Loading state */
-  .loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: #faf7f2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    transition: opacity 0.3s;
-  }
-  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
-  .spinner {
-    width: 36px;
-    height: 36px;
-    border: 3px solid #eaedf5;
-    border-top-color: #c8953a;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Mobile */
-  @media (max-width: 768px) {
-    .dash-header { padding: 14px 18px; }
-    .dash-user-name { display: none; }
-    .dash-layout { grid-template-columns: 1fr; }
-    .dash-sidebar {
-      display: flex;
-      overflow-x: auto;
-      padding: 0;
-      border-right: none;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .dash-nav-item {
-      padding: 14px 18px;
-      border-left: none;
-      border-bottom: 3px solid transparent;
-      white-space: nowrap;
-      font-size: 13px;
-    }
-    .dash-nav-item.active { border-left: none; border-bottom-color: #c8953a; }
-    .dash-main { padding: 18px; }
-    .dash-section { padding: 24px 20px; }
-    .dash-section h1 { font-size: 22px; }
-    .coming-soon { padding: 50px 24px; }
-  }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;--cream:#faf7f2;--sand:#f4f1ea;--gold:#c9a84c;
+  --border:#e5e0d8;--muted:#6b7280;--green:#16a34a;--green-bg:#f0fdf4;
+  --green-border:#bbf7d0;--amber:#d97706;--amber-bg:#fffbeb;
+  --red:#dc2626;--red-bg:#fef2f2;--blue:#2563eb;--blue-bg:#eff6ff;
+  font-family:'Segoe UI',system-ui,Arial,sans-serif;
+}
+body{display:flex;min-height:100vh;background:var(--sand)}
+.sidebar{width:220px;min-height:100vh;background:var(--navy);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.sidebar-logo{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-logo-name{font-size:17px;font-weight:700;color:var(--cream);letter-spacing:-.3px}
+.sidebar-logo-sub{font-size:10px;color:rgba(255,255,255,.35);margin-top:2px}
+.sidebar-section{padding:18px 14px 6px;font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:rgba(255,255,255,.3)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;margin:1px 6px;font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;transition:all .15s;text-decoration:none}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(201,168,76,.18);color:var(--gold)}
+.nav-item svg{width:15px;height:15px;flex-shrink:0}
+.sidebar-profile{margin-top:auto;padding:14px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}
+.s-avatar{width:34px;height:34px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--navy);flex-shrink:0}
+.s-name{font-size:13px;font-weight:600;color:#fff}
+.s-role{font-size:11px;color:rgba(255,255,255,.4)}
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:15px;font-weight:700;color:var(--navy);flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.btn-outline{background:#fff;color:var(--navy);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:var(--navy)}
+.btn-primary{background:var(--navy);color:var(--cream)}
+.btn-primary:hover{opacity:.88}
+.content{padding:26px 28px;flex:1}
+.page{display:none}.page.active{display:block}
+.card{background:#fff;border-radius:10px;border:1px solid var(--border);padding:22px;margin-bottom:16px}
+.card h3{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px}
+.section-title{font-size:19px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.section-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700}
+.pill-approved{background:var(--green-bg);color:var(--green)}
+.pill-pending{background:var(--amber-bg);color:var(--amber)}
+.pill-commented{background:var(--red-bg);color:var(--red)}
+.pill-pending-approval{background:var(--blue-bg);color:var(--blue)}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.info-item label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:4px}
+.info-item p{font-size:14px;color:var(--navy)}
+.session-item{border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
+.session-item:last-child{margin-bottom:0}
+.session-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.session-title{font-size:14px;font-weight:700;color:var(--navy)}
+.session-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.session-body{font-size:13px;color:#444;line-height:1.6;margin-bottom:10px}
+.session-actions{display:flex;gap:8px;margin-top:12px}
+.note-item{border-left:3px solid var(--gold);padding:12px 16px;margin-bottom:10px;background:var(--sand);border-radius:0 8px 8px 0}
+.note-item:last-child{margin-bottom:0}
+.note-date{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.note-text{font-size:13px;color:var(--navy);line-height:1.6}
+.note-counsellor{font-size:11px;color:var(--muted);margin-top:6px}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:32px;margin-bottom:10px}
+.empty h3{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.empty p{font-size:13px;line-height:1.6}
+.comment-box{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:70px;margin-top:8px;outline:none}
+.comment-box:focus{border-color:var(--navy)}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:#fff;border-radius:10px;border:1px solid var(--border);padding:18px}
+.stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.stat-value{font-size:24px;font-weight:700;color:var(--navy)}
+.booking-card{background:linear-gradient(135deg,var(--navy) 0%,#1a2d4a 100%);border-radius:10px;padding:24px;color:#fff;margin-bottom:16px}
+.booking-card h3{font-size:16px;font-weight:700;margin-bottom:8px}
+.booking-card p{font-size:13px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:18px}
+.btn-gold{background:var(--gold);color:var(--navy);font-weight:700}
+.btn-gold:hover{opacity:.88}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .main{margin-left:0}
+  .info-grid{grid-template-columns:1fr}
+  .stat-row{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 <body>
 
-<!-- Loading state shown until auth check completes -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
-</div>
-
-<header class="dash-header">
-  <div class="logo">Edu<span>Mitra</span></div>
-  <div class="dash-user">
-    <span class="dash-user-name" id="userName"></span>
-    <button class="dash-logout" onclick="doLogout()">Log out</button>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-name">EduMitra</div>
+    <div class="sidebar-logo-sub">Student Portal</div>
   </div>
-</header>
+  <div class="sidebar-section">My Journey</div>
+  <a class="nav-item active" onclick="showPage('overview',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" onclick="showPage('sessions',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    My Sessions
+  </a>
+  <a class="nav-item" onclick="showPage('notes',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    Counsellor Notes
+  </a>
+  <a class="nav-item" onclick="showPage('booking',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Book a Session
+  </a>
+  <div class="sidebar-section">Account</div>
+  <a class="nav-item" onclick="showPage('profile',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    My Profile
+  </a>
+  <a class="nav-item" onclick="doLogout()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Log Out
+  </a>
+  <div class="sidebar-profile">
+    <div class="s-avatar" id="sb-avatar">--</div>
+    <div>
+      <div class="s-name" id="sb-name">Loading...</div>
+      <div class="s-role">Student</div>
+    </div>
+  </div>
+</aside>
 
-<div class="dash-layout">
-  <aside class="dash-sidebar">
-    <div class="dash-nav-item active" data-section="profile" onclick="showSection('profile', this)">
-      <span class="icon">👤</span> <span>Profile</span>
-    </div>
-    <div class="dash-nav-item" data-section="documents" onclick="showSection('documents', this)">
-      <span class="icon">📄</span> <span>Documents</span>
-    </div>
-    <div class="dash-nav-item" data-section="counselling" onclick="showSection('counselling', this)">
-      <span class="icon">📅</span> <span>Book Counselling</span>
-    </div>
-    <div class="dash-nav-item" data-section="notes" onclick="showSection('notes', this)">
-      <span class="icon">📝</span> <span>Counselling Notes</span>
-    </div>
-    <div class="dash-nav-item" data-section="courses" onclick="showSection('courses', this)">
-      <span class="icon">🎓</span> <span>Courses</span>
-    </div>
-  </aside>
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title" id="topbar-title">Overview</span>
+    <button class="btn btn-outline" onclick="doLogout()">Log Out</button>
+  </div>
 
-  <main class="dash-main">
+  <div class="content">
 
-    <!-- Profile (working) -->
-    <section class="dash-section active" id="section-profile">
-      <h1>My Profile</h1>
-      <p class="subtitle">Your account information</p>
-      <div class="profile-grid">
-        <div class="profile-field">
-          <label>Full Name</label>
-          <div class="value" id="profileName">—</div>
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div class="section-title">Welcome back, <span id="ov-name">there</span> 👋</div>
+      <div class="section-sub">Here's your EduMitra journey at a glance.</div>
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">Sessions Done</div>
+          <div class="stat-value" id="ov-sessions">0</div>
         </div>
-        <div class="profile-field">
-          <label>Email</label>
-          <div class="value" id="profileEmail">—</div>
+        <div class="stat-card">
+          <div class="stat-label">Counsellor Notes</div>
+          <div class="stat-value" id="ov-notes">0</div>
         </div>
-        <div class="profile-field">
-          <label>Account Status</label>
-          <div class="value"><span class="approved-badge" id="profileStatus">—</span></div>
-        </div>
-        <div class="profile-field">
-          <label>Sign-in Method</label>
-          <div class="value" id="profileProvider">—</div>
+        <div class="stat-card">
+          <div class="stat-label">Account Status</div>
+          <div class="stat-value" style="font-size:14px;padding-top:6px"><span class="pill pill-approved">Approved</span></div>
         </div>
       </div>
-    </section>
-
-    <!-- Documents -->
-    <section class="dash-section" id="section-documents">
-      <h1>Documents</h1>
-      <p class="subtitle">Upload and manage your application documents</p>
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📄</div>
-        <h2>Coming Soon</h2>
-        <p>You'll be able to upload transcripts, ID proofs, statements of purpose, and other supporting documents here. Your counsellor will review them and share feedback.</p>
+      <!-- Latest note -->
+      <div class="card" id="ov-latest-note-card" style="display:none">
+        <h3>Latest Counsellor Note</h3>
+        <div id="ov-latest-note"></div>
       </div>
-    </section>
-
-    <!-- Book Counselling -->
-    <section class="dash-section" id="section-counselling">
-      <h1>Book Counselling</h1>
-      <p class="subtitle">Schedule a 1-on-1 session with our counsellors</p>
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📅</div>
-        <h2>Coming Soon</h2>
-        <p>Browse available time slots and book a counselling session with a mentor matched to your goals. You'll receive a confirmation by email.</p>
+      <!-- Next session -->
+      <div class="card" id="ov-next-session-card" style="display:none">
+        <h3>Latest Session</h3>
+        <div id="ov-next-session"></div>
       </div>
-    </section>
-
-    <!-- Counselling Notes -->
-    <section class="dash-section" id="section-notes">
-      <h1>Counselling Notes</h1>
-      <p class="subtitle">Notes and recommendations from your sessions</p>
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📝</div>
-        <h2>Coming Soon</h2>
-        <p>After each counselling session, your mentor's notes — university shortlists, action items, and timeline — will appear here so you can refer back to them anytime.</p>
+      <div class="booking-card">
+        <h3>Ready for your next session?</h3>
+        <p>Book a counselling slot directly with your assigned counsellor through Calendly.</p>
+        <button class="btn btn-gold" onclick="showPage('booking',document.querySelector('.nav-item:nth-child(6)'))">Book a Session →</button>
       </div>
-    </section>
+    </div>
 
-    <!-- Courses -->
-    <section class="dash-section" id="section-courses">
-      <h1>Courses</h1>
-      <p class="subtitle">Recommended courses and your enrollment</p>
-      <div class="coming-soon">
-        <div class="coming-soon-icon">🎓</div>
-        <h2>Coming Soon</h2>
-        <p>Browse a curated catalogue of courses recommended for your profile — test prep, applications, interviews, and more. Track your progress as you learn.</p>
+    <!-- SESSIONS -->
+    <div class="page" id="page-sessions">
+      <div class="section-title">My Sessions</div>
+      <div class="section-sub">Session minutes logged by your counsellor — review and approve them.</div>
+      <div id="sessions-list"><div class="empty"><div class="empty-icon">📅</div><h3>No sessions yet</h3><p>Your counsellor will log session minutes here after each call.</p></div></div>
+    </div>
+
+    <!-- COUNSELLOR NOTES -->
+    <div class="page" id="page-notes">
+      <div class="section-title">Counsellor Notes</div>
+      <div class="section-sub">Notes and guidance shared by your counsellor after each session.</div>
+      <div id="notes-list"><div class="empty"><div class="empty-icon">📝</div><h3>No notes yet</h3><p>Your counsellor will add notes here as your sessions progress.</p></div></div>
+    </div>
+
+    <!-- BOOK SESSION -->
+    <div class="page" id="page-booking">
+      <div class="section-title">Book a Session</div>
+      <div class="section-sub">Choose a time that works for you using your counsellor's Calendly.</div>
+      <div class="card" style="text-align:center;padding:40px">
+        <div style="font-size:36px;margin-bottom:16px">📅</div>
+        <div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px">Schedule with your counsellor</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">Click below to open your counsellor's booking page and pick an available slot.</div>
+        <button class="btn btn-primary" id="book-btn" onclick="openCounsellorCalendly()">Open Booking Page →</button>
+        <div style="font-size:12px;color:var(--muted);margin-top:16px" id="book-note">Opens Calendly in a new tab</div>
       </div>
-    </section>
+    </div>
 
-  </main>
+    <!-- PROFILE -->
+    <div class="page" id="page-profile">
+      <div class="section-title">My Profile</div>
+      <div class="section-sub">Your EduMitra account details.</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--navy)" id="pr-avatar">--</div>
+          <div>
+            <div style="font-size:18px;font-weight:700;color:var(--navy)" id="pr-name">--</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:3px" id="pr-email">--</div>
+            <div style="margin-top:6px"><span class="pill pill-approved">✓ Approved</span></div>
+          </div>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><label>Full Name</label><p id="pr-name2">--</p></div>
+          <div class="info-item"><label>Email</label><p id="pr-email2">--</p></div>
+          <div class="info-item"><label>Sign-in Method</label><p id="pr-provider">--</p></div>
+          <div class="info-item"><label>Member Since</label><p id="pr-since">--</p></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script>
-// Section switching
-function showSection(name, navEl) {
-  document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.dash-nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('section-' + name).classList.add('active');
-  if (navEl) navEl.classList.add('active');
+const pageTitles={overview:'Overview',sessions:'My Sessions',notes:'Counsellor Notes',booking:'Book a Session',profile:'My Profile'};
+let _user = null;
+let _counsellorCalendly = 'https://calendly.com';
+
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent=pageTitles[id]||id;
+  window.scrollTo(0,0);
 }
 
-// Logout
-async function doLogout() {
-  try { await fetch('/api/logout', { method: 'POST' }); } catch (e) {}
-  window.location.href = '/';
+function initials(name){
+  if(!name) return '--';
+  return name.trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().slice(0,2);
 }
 
-// On load: check auth, populate profile
-(async function init() {
-  try {
-    const res = await fetch('/api/me');
-    const data = await res.json();
+function formatDate(ts){
+  if(!ts) return '--';
+  return new Date(ts).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+}
 
-    if (!data.loggedIn) {
-      window.location.href = '/';
-      return;
+// ── Load user ──
+async function loadUser(){
+  try{
+    const r=await fetch('/api/me');
+    const d=await r.json();
+    if(!d.loggedIn || d.user.role!=='student'){
+      window.location.href='/'; return;
     }
+    _user=d.user;
+    const name=_user.name||_user.email;
+    const ini=initials(name);
+    document.getElementById('sb-avatar').textContent=ini;
+    document.getElementById('sb-name').textContent=name.split(' ')[0];
+    document.getElementById('ov-name').textContent=name.split(' ')[0];
+    document.getElementById('pr-avatar').textContent=ini;
+    document.getElementById('pr-name').textContent=name;
+    document.getElementById('pr-name2').textContent=name;
+    document.getElementById('pr-email').textContent=_user.email;
+    document.getElementById('pr-email2').textContent=_user.email;
+    document.getElementById('pr-provider').textContent=(_user.provider||'email').charAt(0).toUpperCase()+(_user.provider||'email').slice(1);
+    document.getElementById('pr-since').textContent=formatDate(_user.registeredAt);
+    loadSessions();
+    loadNotes();
+  } catch(e){ window.location.href='/'; }
+}
 
-    const user = data.user;
-
-    // Only approved students see this dashboard
-    if (user.role !== 'student' || !user.approved) {
-      window.location.href = '/';
-      return;
+// ── Load sessions ──
+async function loadSessions(){
+  try{
+    const r=await fetch('/api/student/sessions');
+    const d=await r.json();
+    const sessions=d.sessions||[];
+    document.getElementById('ov-sessions').textContent=sessions.length;
+    renderSessions(sessions);
+    if(sessions.length>0){
+      const latest=sessions[sessions.length-1];
+      document.getElementById('ov-next-session-card').style.display='block';
+      document.getElementById('ov-next-session').innerHTML=sessionHTML(latest,false);
     }
+  } catch(e){}
+}
 
-    // Populate profile
-    document.getElementById('userName').textContent = user.name || user.email;
-    document.getElementById('profileName').textContent = user.name || '—';
-    document.getElementById('profileEmail').textContent = user.email;
-    document.getElementById('profileStatus').textContent = 'Approved';
-    document.getElementById('profileProvider').textContent =
-      user.provider === 'google'   ? 'Google' :
-      user.provider === 'linkedin' ? 'LinkedIn' :
-      user.provider === 'password' ? 'Email & Password' :
-      'Email & Password';
-
-    // Hide loading overlay
-    document.getElementById('loadingOverlay').classList.add('hidden');
-
-  } catch (e) {
-    console.error('Auth check failed:', e);
-    window.location.href = '/';
+function sessionHTML(s, showActions=true){
+  const statusClass={approved:'pill-approved',pending_approval:'pill-pending-approval',commented:'pill-commented'}[s.status]||'pill-pending';
+  const statusLabel={approved:'Approved',pending_approval:'Awaiting Your Approval',commented:'Commented'}[s.status]||'Pending';
+  let html=`<div class="session-item">
+    <div class="session-header">
+      <div>
+        <div class="session-title">Session #${s.sessionNumber||'?'} — ${s.topics||'General Counselling'}</div>
+        <div class="session-meta">${formatDate(s.date||s.createdAt)} · ${s.duration||60} mins · by ${s.counsellor||'Your Counsellor'}</div>
+      </div>
+      <span class="pill ${statusClass}">${statusLabel}</span>
+    </div>`;
+  if(s.notes) html+=`<div class="session-body"><strong>Notes:</strong> ${s.notes}</div>`;
+  if(s.actionItems) html+=`<div class="session-body"><strong>Action items:</strong> ${s.actionItems}</div>`;
+  if(s.nextPlan) html+=`<div class="session-body"><strong>Next session:</strong> ${s.nextPlan}</div>`;
+  if(s.comment) html+=`<div class="session-body" style="color:var(--red)"><strong>Your comment:</strong> ${s.comment}</div>`;
+  if(showActions && s.status==='pending_approval'){
+    html+=`<div class="session-actions">
+      <button class="btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="approveSession(${s.id})">✓ Approve Minutes</button>
+      <button class="btn btn-outline" style="font-size:12px;padding:7px 14px" onclick="showComment(${s.id})">Add Comment</button>
+    </div>
+    <div id="comment-area-${s.id}" style="display:none;margin-top:10px">
+      <textarea class="comment-box" id="comment-input-${s.id}" placeholder="Write your comment or question for the counsellor..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="submitComment(${s.id})">Submit Comment</button>
+        <button class="btn btn-outline" style="font-size:12px;padding:7px 14px" onclick="hideComment(${s.id})">Cancel</button>
+      </div>
+    </div>`;
   }
-})();
+  html+=`</div>`;
+  return html;
+}
+
+function renderSessions(sessions){
+  const el=document.getElementById('sessions-list');
+  if(sessions.length===0){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📅</div><h3>No sessions yet</h3><p>Your counsellor will log session minutes here after each call.</p></div>';
+    return;
+  }
+  el.innerHTML=[...sessions].reverse().map(s=>sessionHTML(s)).join('');
+}
+
+function showComment(id){ document.getElementById('comment-area-'+id).style.display='block'; }
+function hideComment(id){ document.getElementById('comment-area-'+id).style.display='none'; }
+
+async function approveSession(id){
+  try{
+    await fetch('/api/student/sessions/'+id+'/approve',{method:'POST'});
+    loadSessions();
+  } catch(e){ alert('Could not approve. Please try again.'); }
+}
+
+async function submitComment(id){
+  const comment=document.getElementById('comment-input-'+id).value.trim();
+  if(!comment){ alert('Please write a comment first.'); return; }
+  try{
+    await fetch('/api/student/sessions/'+id+'/comment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({comment})});
+    loadSessions();
+  } catch(e){ alert('Could not submit comment. Please try again.'); }
+}
+
+// ── Load notes ──
+async function loadNotes(){
+  try{
+    const r=await fetch('/api/student/notes');
+    const d=await r.json();
+    const notes=d.notes||[];
+    document.getElementById('ov-notes').textContent=notes.length;
+    renderNotes(notes);
+    if(notes.length>0){
+      const latest=notes[notes.length-1];
+      document.getElementById('ov-latest-note-card').style.display='block';
+      document.getElementById('ov-latest-note').innerHTML=noteHTML(latest);
+    }
+  } catch(e){}
+}
+
+function noteHTML(n){
+  return `<div class="note-item">
+    <div class="note-date">${n.sessionNumber?'Session #'+n.sessionNumber+' — ':''}${formatDate(n.createdAt)}</div>
+    <div class="note-text">${n.note}</div>
+    <div class="note-counsellor">— ${n.counsellor||'Your Counsellor'}</div>
+  </div>`;
+}
+
+function renderNotes(notes){
+  const el=document.getElementById('notes-list');
+  if(notes.length===0){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📝</div><h3>No notes yet</h3><p>Your counsellor will add notes here as your sessions progress.</p></div>';
+    return;
+  }
+  el.innerHTML='<div class="card">'+[...notes].reverse().map(noteHTML).join('')+'</div>';
+}
+
+// ── Calendly booking ──
+function openCounsellorCalendly(){
+  window.open(_counsellorCalendly,'_blank','noopener');
+}
+
+// ── Logout ──
+async function doLogout(){
+  try{ await fetch('/api/auth/logout',{method:'POST'}); } catch(e){}
+  window.location.href='/';
+}
+
+// ── Init ──
+loadUser();
 </script>
 </body>
 </html>

@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Counsellor Portal — EduMitra</title>
+<style>
+/* ── Reset & tokens ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;
+  --navy-mid:#1a2d4a;
+  --cream:#faf7f2;
+  --sand:#f4f1ea;
+  --gold:#c9a84c;
+  --green:#16a34a;
+  --green-bg:#f0fdf4;
+  --green-border:#bbf7d0;
+  --amber:#d97706;
+  --amber-bg:#fffbeb;
+  --amber-border:#fde68a;
+  --red:#dc2626;
+  --red-bg:#fef2f2;
+  --red-border:#fecaca;
+  --blue:#2563eb;
+  --blue-bg:#eff6ff;
+  --blue-border:#bfdbfe;
+  --text:#0a1628;
+  --muted:#6b7280;
+  --border:#e5e0d8;
+  --sidebar:240px;
+  --radius:10px;
+  font-family:'Segoe UI',system-ui,Arial,sans-serif;
+}
+
+body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:var(--sidebar);
+  min-height:100vh;
+  background:var(--navy);
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;bottom:0;
+  z-index:100;overflow-y:auto;
+}
+.sidebar-logo{
+  padding:24px 20px 20px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.sidebar-logo-name{font-size:18px;font-weight:700;color:var(--cream);letter-spacing:-.3px}
+.sidebar-logo-sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
+
+.sidebar-section{padding:20px 14px 8px;font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:rgba(255,255,255,.35)}
+
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;border-radius:8px;margin:1px 6px;
+  font-size:13px;color:rgba(255,255,255,.65);
+  cursor:pointer;transition:all .15s;text-decoration:none;
+  position:relative;
+}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(201,168,76,.18);color:var(--gold)}
+.nav-item .badge{
+  margin-left:auto;background:var(--gold);color:var(--navy);
+  font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;min-width:18px;text-align:center;
+}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.8}
+.nav-item.active svg{opacity:1}
+
+.sidebar-profile{
+  margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,.08);
+  display:flex;align-items:center;gap:10px;
+}
+.sidebar-avatar{
+  width:36px;height:36px;border-radius:50%;background:var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:var(--navy);flex-shrink:0;
+}
+.sidebar-name{font-size:13px;font-weight:600;color:#fff}
+.sidebar-role{font-size:11px;color:rgba(255,255,255,.4)}
+.verified-badge{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;color:var(--gold);background:rgba(201,168,76,.15);
+  padding:2px 7px;border-radius:99px;margin-top:3px;
+}
+
+/* ── Main ── */
+.main{margin-left:var(--sidebar);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── Topbar ── */
+.topbar{
+  background:#fff;border-bottom:1px solid var(--border);
+  padding:0 32px;height:60px;display:flex;align-items:center;gap:16px;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-title{font-size:16px;font-weight:700;color:var(--navy);flex:1}
+.topbar-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;border:none;transition:all .15s;text-decoration:none;
+}
+.btn-primary{background:var(--navy);color:var(--cream)}
+.btn-primary:hover{opacity:.88}
+.btn-outline{background:#fff;color:var(--navy);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:var(--navy);background:var(--sand)}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-gold:hover{opacity:.88}
+
+/* ── Content ── */
+.content{padding:28px 32px;flex:1}
+
+/* ── Section header ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.section-title{font-size:20px;font-weight:700;color:var(--navy)}
+.section-sub{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* ── Stat cards ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{
+  background:#fff;border-radius:var(--radius);border:1px solid var(--border);
+  padding:20px 22px;
+}
+.stat-label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:700;color:var(--navy);line-height:1}
+.stat-sub{font-size:12px;color:var(--muted);margin-top:6px}
+.stat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.dot-green{background:var(--green)}
+.dot-amber{background:var(--amber)}
+.dot-blue{background:var(--blue)}
+.dot-gold{background:var(--gold)}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:4px;background:var(--sand);padding:4px;border-radius:10px;margin-bottom:24px;width:fit-content}
+.tab{
+  padding:8px 18px;border-radius:7px;font-size:13px;font-weight:600;
+  cursor:pointer;color:var(--muted);transition:all .15s;border:none;background:none;
+}
+.tab.active{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tab-badge{
+  display:inline-block;margin-left:6px;background:var(--navy);color:#fff;
+  font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;vertical-align:middle;
+}
+.tab.active .tab-badge{background:var(--gold);color:var(--navy)}
+
+/* ── Session cards ── */
+.session-list{display:flex;flex-direction:column;gap:12px}
+.session-card{
+  background:#fff;border-radius:var(--radius);border:1px solid var(--border);
+  padding:18px 20px;display:flex;align-items:center;gap:16px;
+  transition:box-shadow .15s;
+}
+.session-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.07)}
+.session-avatar{
+  width:44px;height:44px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.av-blue{background:#2563eb} .av-purple{background:#7c3aed}
+.av-pink{background:#db2777}  .av-teal{background:#0d9488}
+.av-orange{background:#ea580c}.av-navy{background:var(--navy)}
+
+.session-info{flex:1;min-width:0}
+.session-name{font-size:14px;font-weight:700;color:var(--navy)}
+.session-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.session-meta span{margin-right:12px}
+.session-time{font-size:13px;font-weight:600;color:var(--navy);margin-top:5px}
+
+.pill{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;
+}
+.pill-upcoming{background:var(--blue-bg);color:var(--blue)}
+.pill-done{background:var(--green-bg);color:var(--green)}
+.pill-due{background:var(--amber-bg);color:var(--amber)}
+.pill-comment{background:var(--red-bg);color:var(--red)}
+.pill-pending{background:var(--sand);color:var(--muted);border:1px solid var(--border)}
+
+.session-actions{display:flex;gap:8px;flex-shrink:0}
+.action-btn{
+  padding:7px 14px;border-radius:7px;font-size:12px;font-weight:700;
+  cursor:pointer;border:none;transition:all .15s;
+}
+.action-join{background:var(--navy);color:#fff}
+.action-join:hover{opacity:.85}
+.action-log{background:var(--gold);color:var(--navy)}
+.action-log:hover{opacity:.85}
+.action-view{background:var(--sand);color:var(--navy);border:1.5px solid var(--border)}
+.action-view:hover{background:var(--border)}
+.action-review{background:var(--red-bg);color:var(--red);border:1.5px solid var(--red-border)}
+
+/* ── Section divider ── */
+.list-section-label{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--muted);padding:16px 0 8px;border-top:1px solid var(--border);margin-top:4px;
+}
+.list-section-label:first-child{border-top:none;padding-top:0}
+
+/* ── Request inbox ── */
+.request-card{
+  background:#fff;border-radius:var(--radius);border:1px solid var(--border);
+  padding:20px;margin-bottom:12px;
+}
+.request-top{display:flex;align-items:flex-start;gap:14px}
+.request-body{flex:1}
+.request-name{font-size:14px;font-weight:700;color:var(--navy)}
+.request-detail{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.5}
+.request-tag{
+  display:inline-flex;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;
+  margin-right:6px;margin-top:8px;
+}
+.tag-abroad{background:#eff6ff;color:#1d4ed8}
+.tag-placement{background:#fdf4ff;color:#7e22ce}
+.tag-job{background:#fff7ed;color:#c2410c}
+.request-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+
+/* ── Minutes form ── */
+.minutes-form{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:24px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-field label{display:block;font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.form-field input,.form-field select,.form-field textarea{
+  width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;
+  font-size:14px;color:var(--navy);outline:none;background:#fff;font-family:inherit;
+  transition:border-color .15s;
+}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--navy)}
+.form-field textarea{resize:vertical;min-height:100px}
+.form-full{grid-column:1/-1}
+
+/* ── Student history ── */
+.history-card{
+  background:#fff;border-radius:var(--radius);border:1px solid var(--border);
+  padding:0;margin-bottom:12px;overflow:hidden;
+}
+.history-head{
+  padding:16px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;
+}
+.history-body{padding:0 20px 16px;border-top:1px solid var(--border);display:none}
+.history-body.open{display:block}
+.history-note{
+  font-size:13px;color:#444;line-height:1.6;padding:12px 0;
+  border-bottom:1px solid var(--sand);
+}
+.history-note:last-child{border-bottom:none}
+.history-note-date{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600}
+
+/* ── Performance ── */
+.perf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.perf-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:22px}
+.perf-card h3{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+.rating-bar{margin-bottom:10px}
+.rating-label{display:flex;justify-content:space-between;font-size:13px;color:var(--navy);margin-bottom:5px}
+.bar-track{background:var(--sand);border-radius:99px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;background:var(--gold);transition:width .6s}
+
+/* ── Financials ── */
+.fin-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.fin-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:22px}
+.fin-amount{font-size:26px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.fin-label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.payout-table{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden}
+.payout-table table{width:100%;border-collapse:collapse}
+.payout-table th{text-align:left;padding:12px 18px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:var(--sand);border-bottom:1px solid var(--border)}
+.payout-table td{padding:13px 18px;font-size:13px;color:var(--navy);border-bottom:1px solid var(--sand)}
+.payout-table tr:last-child td{border-bottom:none}
+
+/* ── Profile ── */
+.profile-card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:28px;margin-bottom:16px}
+.profile-top{display:flex;align-items:flex-start;gap:20px;margin-bottom:24px}
+.profile-avatar-lg{
+  width:72px;height:72px;border-radius:50%;background:var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:700;color:var(--navy);flex-shrink:0;
+}
+.profile-name{font-size:20px;font-weight:700;color:var(--navy)}
+.profile-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* ── Modals ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;
+  align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal-box{
+  background:#fff;border-radius:16px;width:90%;max-width:760px;max-height:90vh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.modal-head{
+  padding:18px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.modal-head h2{font-size:16px;font-weight:700;color:var(--navy)}
+.modal-close{
+  width:32px;height:32px;border-radius:7px;border:none;background:var(--sand);
+  cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;
+}
+.modal-close:hover{background:var(--border)}
+.modal-body{flex:1;overflow-y:auto}
+
+/* ── Log minutes modal ── */
+.log-modal{max-width:600px}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.empty p{font-size:13px;line-height:1.6}
+
+/* ── Page visibility ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%);transition:transform .25s}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .perf-grid{grid-template-columns:1fr}
+  .fin-summary{grid-template-columns:1fr}
+  .profile-grid{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .content{padding:20px 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-name">EduMitra</div>
+    <div class="sidebar-logo-sub">Counsellor Portal</div>
+  </div>
+
+  <div class="sidebar-section">Workspace</div>
+  <a class="nav-item active" onclick="showPage('overview',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </a>
+  <a class="nav-item" onclick="showPage('sessions',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    Sessions
+    <span class="badge">3</span>
+  </a>
+  <a class="nav-item" onclick="showPage('requests',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Request Inbox
+    <span class="badge">2</span>
+  </a>
+  <a class="nav-item" onclick="showPage('minutes',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Session Minutes
+  </a>
+  <a class="nav-item" onclick="showPage('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Student History
+  </a>
+
+  <div class="sidebar-section">Growth</div>
+  <a class="nav-item" onclick="showPage('performance',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Performance
+  </a>
+  <a class="nav-item" onclick="showPage('financials',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Financials
+  </a>
+  <a class="nav-item" onclick="showPage('resources',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    Resources
+  </a>
+
+  <div class="sidebar-section">Account</div>
+  <a class="nav-item" onclick="showPage('profile',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    My Profile
+  </a>
+
+  <div class="sidebar-profile">
+    <div class="sidebar-avatar">PR</div>
+    <div>
+      <div class="sidebar-name">Priya Ramesh</div>
+      <div class="sidebar-role">Senior Counsellor</div>
+      <div class="verified-badge">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        Verified
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <button class="topbar-btn btn-outline" style="display:none" id="menu-btn" onclick="toggleSidebar()">☰</button>
+    <span class="topbar-title" id="topbar-title">Overview</span>
+    <button class="topbar-btn btn-gold" onclick="openLogMinutes()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Log Session Minutes
+    </button>
+    <button class="topbar-btn btn-outline" id="cal-connect-btn-top" onclick="connectGoogleCalendar()" style="display:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Connect Google Calendar
+    </button>
+  </div>
+
+  <div class="content">
+
+    <!-- ── OVERVIEW ── -->
+    <div class="page active" id="page-overview">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Good morning, Priya 👋</div>
+          <div class="section-sub">Here's your workspace at a glance for today.</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Sessions Today</div>
+          <div class="stat-value">2</div>
+          <div class="stat-sub"><span class="stat-dot dot-blue"></span>Next at 11:00 AM</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Minutes Due</div>
+          <div class="stat-value">2</div>
+          <div class="stat-sub"><span class="stat-dot dot-amber"></span>Overdue by 1</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Open Requests</div>
+          <div class="stat-value">2</div>
+          <div class="stat-sub"><span class="stat-dot dot-green"></span>New today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Rating</div>
+          <div class="stat-value">4.8</div>
+          <div class="stat-sub"><span class="stat-dot dot-gold"></span>Last 30 days</div>
+        </div>
+      </div>
+
+      <!-- Today's sessions -->
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title" style="font-size:16px">Today's Sessions</div>
+        <button class="topbar-btn btn-outline" onclick="showPage('sessions',document.querySelector('.nav-item:nth-child(5)'))">See all</button>
+      </div>
+      <div class="session-list">
+        <div class="session-card">
+          <div class="session-avatar av-blue">AK</div>
+          <div class="session-info">
+            <div class="session-name">Arjun Kapoor</div>
+            <div class="session-meta">
+              <span>Study Abroad</span><span>USA – MS in CS</span><span>Session #2</span>
+            </div>
+            <div class="session-time">Today, 11:00 AM</div>
+          </div>
+          <span class="pill pill-upcoming">Upcoming</span>
+          <div class="session-actions">
+            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+          </div>
+        </div>
+        <div class="session-card">
+          <div class="session-avatar av-purple">NS</div>
+          <div class="session-info">
+            <div class="session-name">Nisha Singh</div>
+            <div class="session-meta">
+              <span>Job Switch</span><span>IT → Product Management</span><span>Session #1</span>
+            </div>
+            <div class="session-time">Today, 2:30 PM</div>
+          </div>
+          <span class="pill pill-upcoming">Upcoming</span>
+          <div class="session-actions">
+            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending minutes -->
+      <div class="section-header" style="margin-top:24px">
+        <div class="section-title" style="font-size:16px">Pending Minutes</div>
+      </div>
+      <div class="session-list">
+        <div class="session-card" style="border-left:3px solid var(--amber)">
+          <div class="session-avatar av-pink">SP</div>
+          <div class="session-info">
+            <div class="session-name">Sneha Patil</div>
+            <div class="session-meta"><span>Study Abroad</span><span>UK – MSc Data Science</span><span>Session #1</span></div>
+            <div class="session-time">Jun 14</div>
+          </div>
+          <span class="pill pill-due">Minutes Due</span>
+          <div class="session-actions">
+            <button class="action-btn action-log" onclick="openLogMinutes()">Log Now</button>
+          </div>
+        </div>
+        <div class="session-card" style="border-left:3px solid var(--red)">
+          <div class="session-avatar av-teal">MI</div>
+          <div class="session-info">
+            <div class="session-name">Meera Iyer</div>
+            <div class="session-meta"><span>Study Abroad</span><span>Canada – MBA</span><span>Session #3</span></div>
+            <div class="session-time">Jun 12</div>
+          </div>
+          <span class="pill pill-comment">Student Comment</span>
+          <div class="session-actions">
+            <button class="action-btn action-review" onclick="showPage('minutes',document.querySelector('.nav-item:nth-child(7)'))">Review</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SESSIONS ── -->
+    <div class="page" id="page-sessions">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Sessions</div>
+          <div class="section-sub">Manage your availability and view booked sessions</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="topbar-btn btn-outline" id="cal-connect-btn" onclick="connectGoogleCalendar()" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Connect Google Calendar
+          </button>
+          <button class="topbar-btn btn-primary" id="add-slot-btn" onclick="openAddSlotModal()" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Available Slot
+          </button>
+        </div>
+      </div>
+
+
+      <!-- Availability slots -->
+      <div class="card" id="slots-card" style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--navy)">Your Available Slots</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Students can book from these slots</div>
+          </div>
+          <span id="cal-status-badge" style="display:none" class="pill pill-done">📅 Google Calendar Connected</span>
+        </div>
+        <div id="slots-list"><div style="font-size:13px;color:var(--muted);padding:12px 0">No slots added yet. Click "Add Available Slot" to add your first slot.</div></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'tab-upcoming')">Upcoming <span class="tab-badge">3</span></button>
+        <button class="tab" onclick="switchTab(this,'tab-completed')">Completed <span class="tab-badge">9</span></button>
+        <button class="tab" onclick="switchTab(this,'tab-awaiting')">Awaiting Approval <span class="tab-badge">2</span></button>
+      </div>
+
+      <div id="tab-upcoming" class="session-list">
+        <div class="session-card">
+          <div class="session-avatar av-blue">AK</div>
+          <div class="session-info">
+            <div class="session-name">Arjun Kapoor</div>
+            <div class="session-meta"><span>Study Abroad</span><span>USA – MS in CS</span><span>Session #2</span></div>
+            <div class="session-time">Today, 11:00 AM</div>
+          </div>
+          <span class="pill pill-upcoming">Upcoming</span>
+          <div class="session-actions">
+            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+          </div>
+        </div>
+        <div class="session-card">
+          <div class="session-avatar av-purple">NS</div>
+          <div class="session-info">
+            <div class="session-name">Nisha Singh</div>
+            <div class="session-meta"><span>Job Switch</span><span>IT → Product Management</span><span>Session #1</span></div>
+            <div class="session-time">Today, 2:30 PM</div>
+          </div>
+          <span class="pill pill-upcoming">Upcoming</span>
+          <div class="session-actions">
+            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+          </div>
+        </div>
+        <div class="session-card">
+          <div class="session-avatar av-orange">RM</div>
+          <div class="session-info">
+            <div class="session-name">Rohan Mehta</div>
+            <div class="session-meta"><span>Placement</span><span>Campus Placement Prep</span><span>Session #1</span></div>
+            <div class="session-time">Fri Jun 20, 10:00 AM</div>
+          </div>
+          <span class="pill pill-upcoming">Upcoming</span>
+          <div class="session-actions">
+            <button class="action-btn action-view">View</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-completed" class="session-list" style="display:none">
+        <div class="list-section-label">Completed — awaiting minutes</div>
+        <div class="session-card" style="border-left:3px solid var(--amber)">
+          <div class="session-avatar av-pink">SP</div>
+          <div class="session-info">
+            <div class="session-name">Sneha Patil</div>
+            <div class="session-meta"><span>Study Abroad</span><span>UK – MSc Data Science</span><span>Session #1</span></div>
+            <div class="session-time">Jun 14</div>
+          </div>
+          <span class="pill pill-due">Minutes Due</span>
+          <div class="session-actions">
+            <button class="action-btn action-log" onclick="openLogMinutes()">Log Now</button>
+          </div>
+        </div>
+        <div class="session-card" style="border-left:3px solid var(--red)">
+          <div class="session-avatar av-teal">MI</div>
+          <div class="session-info">
+            <div class="session-name">Meera Iyer</div>
+            <div class="session-meta"><span>Study Abroad</span><span>Canada – MBA</span><span>Session #3</span></div>
+            <div class="session-time">Jun 12</div>
+          </div>
+          <span class="pill pill-comment">Student Comment</span>
+          <div class="session-actions">
+            <button class="action-btn action-review">Review</button>
+          </div>
+        </div>
+        <div class="list-section-label">Approved minutes</div>
+        <div class="session-card">
+          <div class="session-avatar av-navy">VK</div>
+          <div class="session-info">
+            <div class="session-name">Vikram Kumar</div>
+            <div class="session-meta"><span>Placement</span><span>Product Management</span><span>Session #2</span></div>
+            <div class="session-time">Jun 10</div>
+          </div>
+          <span class="pill pill-done">Approved</span>
+          <div class="session-actions">
+            <button class="action-btn action-view">View</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-awaiting" class="session-list" style="display:none">
+        <div class="session-card">
+          <div class="session-avatar av-pink">SP</div>
+          <div class="session-info">
+            <div class="session-name">Sneha Patil — Session #1</div>
+            <div class="session-meta"><span>Minutes submitted Jun 15</span><span>Awaiting student approval</span></div>
+          </div>
+          <span class="pill pill-pending">Pending</span>
+          <div class="session-actions">
+            <button class="action-btn action-view">View</button>
+          </div>
+        </div>
+        <div class="session-card">
+          <div class="session-avatar av-teal">MI</div>
+          <div class="session-info">
+            <div class="session-name">Meera Iyer — Session #2</div>
+            <div class="session-meta"><span>Minutes submitted Jun 13</span><span>Student commented</span></div>
+          </div>
+          <span class="pill pill-comment">Student Comment</span>
+          <div class="session-actions">
+            <button class="action-btn action-review">Review</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REQUEST INBOX ── -->
+    <div class="page" id="page-requests">
+      <div class="section-header">
+        <div class="section-title">Request Inbox</div>
+        <div class="section-sub">New counselling requests assigned to you</div>
+      </div>
+
+      <div class="request-card">
+        <div class="request-top">
+          <div class="session-avatar av-blue" style="width:44px;height:44px;font-size:14px">RG</div>
+          <div class="request-body">
+            <div class="request-name">Riya Gupta</div>
+            <div class="request-detail">
+              Looking for guidance on MS in Data Science — UK vs Canada. Currently working as a data analyst with 2 years of experience. Budget: ₹40–60 L.
+            </div>
+            <div>
+              <span class="request-tag tag-abroad">Study Abroad</span>
+              <span class="request-tag tag-abroad" style="background:#e0f2fe;color:#0369a1">UK / Canada</span>
+            </div>
+          </div>
+        </div>
+        <div class="request-actions">
+          <button class="topbar-btn btn-outline" style="font-size:12px;padding:7px 14px">Decline</button>
+          <button class="topbar-btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="window.open('https://meet.google.com/','_blank')">Accept &amp; Schedule</button>
+        </div>
+      </div>
+
+      <div class="request-card">
+        <div class="request-top">
+          <div class="session-avatar av-orange" style="width:44px;height:44px;font-size:14px">KP</div>
+          <div class="request-body">
+            <div class="request-name">Karan Patel</div>
+            <div class="request-detail">
+              Seeking career transition coaching from software engineering to product management. 4 years in engineering. Has a specific role in mind at a FAANG company.
+            </div>
+            <div>
+              <span class="request-tag tag-job">Job Transition</span>
+              <span class="request-tag tag-placement">Product Management</span>
+            </div>
+          </div>
+        </div>
+        <div class="request-actions">
+          <button class="topbar-btn btn-outline" style="font-size:12px;padding:7px 14px">Decline</button>
+          <button class="topbar-btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="window.open('https://meet.google.com/','_blank')">Accept &amp; Schedule</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SESSION MINUTES ── -->
+    <div class="page" id="page-minutes">
+      <div class="section-header">
+        <div class="section-title">Session Minutes</div>
+        <div class="section-sub">Log and manage notes from your counselling sessions</div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div class="session-card" style="border-left:3px solid var(--red);cursor:pointer" onclick="openLogMinutes()">
+          <div class="session-avatar av-teal">MI</div>
+          <div class="session-info">
+            <div class="session-name">Meera Iyer — Session #3</div>
+            <div class="session-meta"><span>Jun 12</span><span>Canada – MBA</span></div>
+            <div style="margin-top:6px;font-size:13px;color:var(--red);font-weight:600">
+              ⚠ Student commented: "Please clarify the GMAT waiver process you mentioned."
+            </div>
+          </div>
+          <span class="pill pill-comment">Needs Response</span>
+          <div class="session-actions">
+            <button class="action-btn action-review">Edit &amp; Resubmit</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:24px">
+        <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px">Recently Submitted</div>
+        <div class="session-list">
+          <div class="session-card">
+            <div class="session-avatar av-pink">SP</div>
+            <div class="session-info">
+              <div class="session-name">Sneha Patil — Session #1</div>
+              <div class="session-meta"><span>Submitted Jun 15</span><span>Awaiting student approval</span></div>
+            </div>
+            <span class="pill pill-pending">Pending</span>
+            <button class="action-btn action-view">View</button>
+          </div>
+          <div class="session-card">
+            <div class="session-avatar av-navy">VK</div>
+            <div class="session-info">
+              <div class="session-name">Vikram Kumar — Session #2</div>
+              <div class="session-meta"><span>Jun 10</span><span>Approved by student</span></div>
+            </div>
+            <span class="pill pill-done">Approved</span>
+            <button class="action-btn action-view">View</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STUDENT HISTORY ── -->
+    <div class="page" id="page-history">
+      <div class="section-header">
+        <div class="section-title">Student History</div>
+        <div class="section-sub">Full session and note history for each student</div>
+      </div>
+
+      <div class="history-card">
+        <div class="history-head" onclick="toggleHistory(this)">
+          <div class="session-avatar av-blue">AK</div>
+          <div style="flex:1">
+            <div class="session-name">Arjun Kapoor</div>
+            <div class="session-meta">Study Abroad · USA – MS in CS · 2 sessions</div>
+          </div>
+          <span class="pill pill-upcoming">Active</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" style="margin-left:12px"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="history-body">
+          <div class="history-note">
+            <div class="history-note-date">Session #1 — Jun 8</div>
+            Discussed target universities: CMU, UIUC, UMass Amherst. Strong GRE score (328). SOP needs work — lacks specific research angle. Action: Arjun to send draft SOP by Jun 20. LOR from current manager identified.
+          </div>
+          <div class="history-note">
+            <div class="history-note-date">Session #2 — Today (Upcoming)</div>
+            Scheduled to review SOP draft and finalize university list. Will cover visa timeline.
+          </div>
+        </div>
+      </div>
+
+      <div class="history-card">
+        <div class="history-head" onclick="toggleHistory(this)">
+          <div class="session-avatar av-teal">MI</div>
+          <div style="flex:1">
+            <div class="session-name">Meera Iyer</div>
+            <div class="session-meta">Study Abroad · Canada – MBA · 3 sessions</div>
+          </div>
+          <span class="pill pill-comment">Comment</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" style="margin-left:12px"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="history-body">
+          <div class="history-note">
+            <div class="history-note-date">Session #1 — May 20</div>
+            Initial assessment. Target: Rotman, Schulich, Queen's. GMAT: 690 (aim for 710+). Work experience strong (6 yrs, team lead). Action: Begin GMAT prep.
+          </div>
+          <div class="history-note">
+            <div class="history-note-date">Session #2 — Jun 5</div>
+            GMAT retake booked for Jun 28. Discussed GMAT waiver options for Schulich. Meera unsure about waiver eligibility — flagged for Session #3.
+          </div>
+          <div class="history-note">
+            <div class="history-note-date">Session #3 — Jun 12 ⚠ Student commented</div>
+            Covered application timeline. Student asking for clarification on GMAT waiver process — needs edit and resubmission of minutes.
+          </div>
+        </div>
+      </div>
+
+      <div class="history-card">
+        <div class="history-head" onclick="toggleHistory(this)">
+          <div class="session-avatar av-navy">VK</div>
+          <div style="flex:1">
+            <div class="session-name">Vikram Kumar</div>
+            <div class="session-meta">Placement · Product Management · 2 sessions</div>
+          </div>
+          <span class="pill pill-done">Complete</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" style="margin-left:12px"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="history-body">
+          <div class="history-note">
+            <div class="history-note-date">Session #1 — May 30</div>
+            Career audit: 4 yrs SWE at mid-size startup. Strong product sense. Resume needed product framing — rewrote impact bullets. Identified 8 target companies.
+          </div>
+          <div class="history-note">
+            <div class="history-note-date">Session #2 — Jun 10 ✓ Approved</div>
+            Mock PM interview practice. Improved product design answers. Gave feedback on Vikram's LinkedIn. Recommended reaching out to 3 specific contacts. All minutes approved by student.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PERFORMANCE ── -->
+    <div class="page" id="page-performance">
+      <div class="section-header">
+        <div class="section-title">Performance</div>
+        <div class="section-sub">Your ratings and outcomes — last 30 days</div>
+      </div>
+
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat-card">
+          <div class="stat-label">Overall Rating</div>
+          <div class="stat-value">4.8</div>
+          <div class="stat-sub">⭐ Out of 5.0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Sessions Done</div>
+          <div class="stat-value">12</div>
+          <div class="stat-sub">+3 vs last month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Completion Rate</div>
+          <div class="stat-value">96%</div>
+          <div class="stat-sub">1 rescheduled</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Minutes Approval</div>
+          <div class="stat-value">91%</div>
+          <div class="stat-sub">First-submit rate</div>
+        </div>
+      </div>
+
+      <div class="perf-grid">
+        <div class="perf-card">
+          <h3>Student Ratings by Category</h3>
+          <div class="rating-bar">
+            <div class="rating-label"><span>Preparation & Knowledge</span><span>4.9</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:98%"></div></div>
+          </div>
+          <div class="rating-bar">
+            <div class="rating-label"><span>Communication</span><span>4.8</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:96%"></div></div>
+          </div>
+          <div class="rating-bar">
+            <div class="rating-label"><span>Actionability of Advice</span><span>4.7</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:94%"></div></div>
+          </div>
+          <div class="rating-bar">
+            <div class="rating-label"><span>Timeliness</span><span>4.6</span></div>
+            <div class="bar-track"><div class="bar-fill" style="width:92%"></div></div>
+          </div>
+        </div>
+        <div class="perf-card">
+          <h3>Recent Student Feedback</h3>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="background:var(--sand);border-radius:8px;padding:14px">
+              <div style="font-size:13px;color:var(--navy);line-height:1.5">"Priya's SOP guidance was incredibly detailed. Got into my first choice university!"</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px">— Vikram K. · ⭐⭐⭐⭐⭐ · Jun 10</div>
+            </div>
+            <div style="background:var(--sand);border-radius:8px;padding:14px">
+              <div style="font-size:13px;color:var(--navy);line-height:1.5">"Very clear on visa timelines and university selection. Felt completely guided."</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px">— Anonymous · ⭐⭐⭐⭐⭐ · Jun 6</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FINANCIALS ── -->
+    <div class="page" id="page-financials">
+      <div class="section-header">
+        <div class="section-title">Financials</div>
+        <div class="section-sub">Your earnings and payout history</div>
+      </div>
+
+      <div class="fin-summary">
+        <div class="fin-card">
+          <div class="fin-label">This Month</div>
+          <div class="fin-amount">₹18,500</div>
+          <div style="font-size:12px;color:var(--green);margin-top:4px">↑ +22% vs last month</div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">Pending Payout</div>
+          <div class="fin-amount">₹6,000</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Expected Jul 5</div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">Total Earned</div>
+          <div class="fin-amount">₹1,24,000</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Since Jan 2024</div>
+        </div>
+      </div>
+
+      <div class="payout-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Period</th><th>Sessions</th><th>Amount</th><th>Status</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Jun 1–15, 2026</td><td>6</td><td>₹12,500</td>
+              <td><span class="pill pill-pending" style="font-size:11px">Processing</span></td>
+              <td>Jul 5, 2026</td>
+            </tr>
+            <tr>
+              <td>May 16–31, 2026</td><td>5</td><td>₹10,000</td>
+              <td><span class="pill pill-done" style="font-size:11px">Paid</span></td>
+              <td>Jun 20, 2026</td>
+            </tr>
+            <tr>
+              <td>May 1–15, 2026</td><td>4</td><td>₹8,000</td>
+              <td><span class="pill pill-done" style="font-size:11px">Paid</span></td>
+              <td>Jun 5, 2026</td>
+            </tr>
+            <tr>
+              <td>Apr 16–30, 2026</td><td>6</td><td>₹12,000</td>
+              <td><span class="pill pill-done" style="font-size:11px">Paid</span></td>
+              <td>May 20, 2026</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── RESOURCES ── -->
+    <div class="page" id="page-resources">
+      <div class="section-header">
+        <div class="section-title">Resources</div>
+        <div class="section-sub">Guides, templates, and materials shared by EduMitra</div>
+      </div>
+      <div class="empty">
+        <div class="empty-icon">📁</div>
+        <h3>No resources yet</h3>
+        <p>EduMitra will share guides, SOP templates, visa checklists, and counsellor playbooks here.</p>
+      </div>
+    </div>
+
+    <!-- ── PROFILE ── -->
+    <div class="page" id="page-profile">
+      <div class="section-header">
+        <div class="section-title">My Profile</div>
+        <div class="section-sub">Your public counsellor profile on EduMitra</div>
+      </div>
+
+      <div class="profile-card">
+        <div class="profile-top">
+          <div class="profile-avatar-lg">PR</div>
+          <div>
+            <div class="profile-name">Priya Ramesh</div>
+            <div class="profile-sub">Senior Counsellor · Study Abroad & Career Transitions</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <span class="pill pill-done">Verified</span>
+              <span class="pill" style="background:var(--blue-bg);color:var(--blue)">4.8 ⭐ Rating</span>
+              <span class="pill pill-pending">12 Sessions</span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-grid">
+          <div class="form-field">
+            <label>Full Name</label>
+            <input type="text" value="Priya Ramesh">
+          </div>
+          <div class="form-field">
+            <label>Email</label>
+            <input type="email" value="priya.ramesh@edumitra.co">
+          </div>
+          <div class="form-field">
+            <label>Phone</label>
+            <input type="tel" value="+91 98765 43210">
+          </div>
+          <div class="form-field">
+            <label>Specialisation</label>
+            <input type="text" value="Study Abroad, Career Transitions">
+          </div>
+          <div class="form-field" style="grid-column:1/-1">
+            <label>Bio</label>
+            <textarea rows="3">10+ years helping students achieve their global education and career goals. Specialised in US/UK/Canada admissions and IT-to-product transitions.</textarea>
+          </div>
+          <div class="form-field">
+            <label>LinkedIn</label>
+            <input type="url" value="https://linkedin.com/in/priya-ramesh">
+          </div>
+        </div>
+        <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
+          <button class="topbar-btn btn-outline">Discard</button>
+          <button class="topbar-btn btn-primary">Save Changes</button>
+        </div>
+      </div>
+
+      <!-- ── Change Password ── -->
+      <div class="card" style="margin-top:20px;max-width:680px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--navy)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div style="font-size:15px;font-weight:700;color:var(--navy)">Change Password</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:18px">For security, change your temporary password after your first login.</div>
+        <div id="pw-alert" style="padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;line-height:1.5"></div>
+        <div class="form-grid" style="max-width:560px">
+          <div class="form-field" style="grid-column:1/-1">
+            <label>Current password</label>
+            <input type="password" id="pw-current" placeholder="Enter your current password" autocomplete="current-password">
+          </div>
+          <div class="form-field">
+            <label>New password</label>
+            <input type="password" id="pw-new" placeholder="At least 8 characters" autocomplete="new-password">
+          </div>
+          <div class="form-field">
+            <label>Confirm new password</label>
+            <input type="password" id="pw-confirm" placeholder="Same password again" autocomplete="new-password">
+          </div>
+        </div>
+        <div style="margin-top:18px;display:flex;justify-content:flex-end">
+          <button class="topbar-btn btn-primary" id="pw-submit-btn" onclick="changePassword()">Update password</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ── Log Minutes Modal ── -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal-box log-modal">
+    <div class="modal-head">
+      <h2>Log Session Minutes</h2>
+      <button class="modal-close" onclick="closeLogMinutes()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div class="minutes-form">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Student</label>
+            <select>
+              <option>Sneha Patil</option>
+              <option>Meera Iyer</option>
+              <option>Arjun Kapoor</option>
+              <option>Nisha Singh</option>
+              <option>Rohan Mehta</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Session #</label>
+            <select>
+              <option>Session #1</option>
+              <option>Session #2</option>
+              <option>Session #3</option>
+              <option>Session #4</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Date</label>
+            <input type="date" value="2026-06-21">
+          </div>
+          <div class="form-field">
+            <label>Duration (mins)</label>
+            <input type="number" value="60" min="15" step="15">
+          </div>
+          <div class="form-field form-full">
+            <label>Topics Discussed</label>
+            <input type="text" placeholder="e.g. University shortlist, SOP strategy, GMAT timeline">
+          </div>
+          <div class="form-field form-full">
+            <label>Session Notes</label>
+            <textarea rows="4" placeholder="Key discussion points, decisions made, guidance given..."></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>Action Items</label>
+            <textarea rows="3" placeholder="What the student agreed to do before next session..."></textarea>
+          </div>
+          <div class="form-field form-full">
+            <label>Next Session Plan</label>
+            <input type="text" placeholder="Topics to cover in the next session">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+          <button class="topbar-btn btn-outline" onclick="closeLogMinutes()">Cancel</button>
+          <button class="topbar-btn btn-primary" onclick="submitMinutes()">Submit for Student Approval</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Slot Modal -->
+<div class="modal-overlay" id="add-slot-modal">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-head">
+      <h2>Add Available Slot</h2>
+      <button class="modal-close" onclick="closeAddSlotModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div class="minutes-form">
+        <div style="margin-bottom:16px">
+          <div class="form-field">
+            <label>Date</label>
+            <input type="date" id="slot-date" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div class="form-field">
+            <label>Start Time</label>
+            <input type="time" id="slot-start" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+          </div>
+          <div class="form-field">
+            <label>End Time</label>
+            <input type="time" id="slot-end" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:20px">
+          <label>Label (optional)</label>
+          <input type="text" id="slot-label" placeholder="e.g. Study Abroad consultation" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <div id="slot-alert" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="topbar-btn btn-outline" onclick="closeAddSlotModal()">Cancel</button>
+          <button class="topbar-btn btn-primary" onclick="addSlot()">Add Slot</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+
+// ── Google Calendar + Slots ──
+function connectGoogleCalendar() {
+  window.location.href = '/auth/google/calendar';
+}
+
+async function checkCalendarStatus() {
+  try {
+    const r = await fetch('/api/counsellor/calendar/status');
+    const d = await r.json();
+    const badge        = document.getElementById('cal-status-badge');
+    const connectBtn   = document.getElementById('cal-connect-btn');
+    const connectTop   = document.getElementById('cal-connect-btn-top');
+    const addSlotBtn   = document.getElementById('add-slot-btn');
+    if (d.connected) {
+      if (badge)      badge.style.display      = 'inline-flex';
+      if (connectBtn) connectBtn.style.display = 'none';
+      if (connectTop) connectTop.style.display = 'none';
+      if (addSlotBtn) addSlotBtn.style.display = 'inline-flex';
+    } else {
+      if (badge)      badge.style.display      = 'none';
+      if (connectBtn) connectBtn.style.display = 'inline-flex';
+      if (connectTop) connectTop.style.display = 'inline-flex';
+      if (addSlotBtn) addSlotBtn.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+async function loadSlots() {
+  try {
+    const r = await fetch('/api/counsellor/slots');
+    const d = await r.json();
+    renderSlots(d.slots || []);
+  } catch(e) {}
+}
+
+function renderSlots(slots) {
+  const el = document.getElementById('slots-list');
+  if (!slots.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--muted);padding:12px 0">No slots added yet. Click "Add Available Slot" to add your first slot.</div>';
+    return;
+  }
+  el.innerHTML = slots.map(s => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:${s.booked ? '#f0fdf4' : '#fff'}">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--navy)">${formatSlotDate(s.date)} · ${s.startTime} – ${s.endTime}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${s.label || 'General Counselling'}${s.booked ? ' · <span style="color:#16a34a;font-weight:600">Booked by student</span>' : ''}</div>
+        ${s.meetLink ? `<a href="${s.meetLink}" target="_blank" style="font-size:12px;color:#2563eb;font-weight:600">Join Google Meet →</a>` : ''}
+      </div>
+      ${!s.booked ? `<button onclick="deleteSlot(${s.id})" style="padding:6px 12px;border-radius:6px;border:1.5px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer">Remove</button>` : '<span class="pill pill-done" style="font-size:11px">Booked</span>'}
+    </div>`).join('');
+}
+
+function formatSlotDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+}
+
+function openAddSlotModal() {
+  // Set default date to tomorrow
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('slot-date').value = tomorrow.toISOString().split('T')[0];
+  document.getElementById('slot-start').value = '10:00';
+  document.getElementById('slot-end').value = '11:00';
+  document.getElementById('slot-label').value = '';
+  document.getElementById('slot-alert').style.display = 'none';
+  document.getElementById('add-slot-modal').classList.add('open');
+}
+function closeAddSlotModal() {
+  document.getElementById('add-slot-modal').classList.remove('open');
+}
+
+async function addSlot() {
+  const date  = document.getElementById('slot-date').value;
+  const start = document.getElementById('slot-start').value;
+  const end   = document.getElementById('slot-end').value;
+  const label = document.getElementById('slot-label').value;
+  const alert = document.getElementById('slot-alert');
+  alert.style.display = 'none';
+
+  if (!date || !start || !end) {
+    alert.textContent = 'Please fill in date, start time and end time.';
+    alert.style.display = 'block'; return;
+  }
+  if (start >= end) {
+    alert.textContent = 'End time must be after start time.';
+    alert.style.display = 'block'; return;
+  }
+
+  try {
+    const r = await fetch('/api/counsellor/slots', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ date, startTime: start, endTime: end, label }),
+    });
+    const d = await r.json();
+    if (!r.ok) { alert.textContent = d.error || 'Failed to add slot.'; alert.style.display = 'block'; return; }
+    closeAddSlotModal();
+    loadSlots();
+  } catch(e) {
+    alert.textContent = 'Could not reach server.'; alert.style.display = 'block';
+  }
+}
+
+async function deleteSlot(id) {
+  if (!confirm('Remove this slot?')) return;
+  await fetch('/api/counsellor/slots/' + id, { method: 'DELETE' });
+  loadSlots();
+}
+
+// Check for calendar connection success/error in URL
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('cal_success')) {
+  setTimeout(() => { alert('Google Calendar connected! Students can now book sessions and receive Meet links.'); }, 500);
+}
+if (urlParams.get('cal_error')) {
+  setTimeout(() => { alert('Could not connect Google Calendar. Please try again.'); }, 500);
+}
+
+// Init calendar features
+checkCalendarStatus();
+loadSlots();
+
+// ── Page navigation ──
+const pageTitles = {
+  overview:'Overview', sessions:'Sessions', requests:'Request Inbox',
+  minutes:'Session Minutes', history:'Student History',
+  performance:'Performance', financials:'Financials',
+  resources:'Resources', profile:'My Profile'
+};
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent = pageTitles[id] || id;
+  window.scrollTo(0,0);
+}
+
+// ── Tabs ──
+function switchTab(btn, tabId) {
+  btn.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const container = btn.closest('.page');
+  container.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById(tabId).style.display = 'flex';
+  document.getElementById(tabId).style.flexDirection = 'column';
+  document.getElementById(tabId).style.gap = '12px';
+}
+
+// ── History accordion ──
+function toggleHistory(head) {
+  const body = head.nextElementSibling;
+  body.classList.toggle('open');
+  const arrow = head.querySelector('svg:last-child');
+  arrow.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+// ── Change password ──
+async function changePassword() {
+  const cur = document.getElementById('pw-current').value;
+  const nw  = document.getElementById('pw-new').value;
+  const cf  = document.getElementById('pw-confirm').value;
+  const alert = document.getElementById('pw-alert');
+  const btn = document.getElementById('pw-submit-btn');
+
+  function showAlert(msg, kind) {
+    alert.style.display = 'block';
+    if (kind === 'success') {
+      alert.style.background = '#f0fdf4';
+      alert.style.color = '#166534';
+      alert.style.border = '1px solid #bbf7d0';
+    } else {
+      alert.style.background = '#fef2f2';
+      alert.style.color = '#991b1b';
+      alert.style.border = '1px solid #fecaca';
+    }
+    alert.textContent = msg;
+  }
+
+  alert.style.display = 'none';
+  if (!cur) { showAlert('Please enter your current password.'); return; }
+  if (!nw || nw.length < 8) { showAlert('New password must be at least 8 characters.'); return; }
+  if (nw !== cf) { showAlert('New password and confirmation do not match.'); return; }
+  if (nw === cur) { showAlert('New password must be different from your current password.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Updating…';
+  try {
+    const res = await fetch('/api/counsellor/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: cur, newPassword: nw })
+    });
+    const data = await res.json();
+    if (!res.ok) { showAlert(data.error || 'Could not update password.'); return; }
+    showAlert('Password updated successfully.', 'success');
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+  } catch (e) {
+    showAlert('Network error. Please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update password';
+  }
+}
+
+// ── Log minutes modal ──
+function openLogMinutes() {
+  document.getElementById('log-modal').classList.add('open');
+}
+function closeLogMinutes() {
+  document.getElementById('log-modal').classList.remove('open');
+}
+function submitMinutes() {
+  closeLogMinutes();
+  // In production: POST to /api/counsellor/minutes
+  alert('Minutes submitted for student approval.');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// Mobile sidebar
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+</script>
+</body>
+</html>

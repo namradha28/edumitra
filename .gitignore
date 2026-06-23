@@ -3,3 +3,5 @@
 data/
 *.log
 .DS_Store
+*.bak
+*.backup

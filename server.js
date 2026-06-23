@@ -1,573 +1,390 @@
 require('dotenv').config();
-const express    = require('express');
-const session    = require('express-session');
-const fs         = require('fs');
-const path       = require('path');
-const crypto     = require('crypto');
-const rateLimit  = require('express-rate-limit');
+const express = require('express');
+const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const { google } = require('googleapis');
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 5000;
-const FRONTEND_URL       = process.env.FRONTEND_URL       || `http://localhost:${PORT}`;
-const GOOGLE_CLIENT_ID   = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI  || `${FRONTEND_URL}/auth/google/callback`;
-const LINKEDIN_CLIENT_ID   = process.env.LINKEDIN_CLIENT_ID;
-const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
-const LINKEDIN_REDIRECT_URI  = process.env.LINKEDIN_REDIRECT_URI || `${FRONTEND_URL}/auth/linkedin/callback`;
-const SUPERADMIN_EMAIL   = (process.env.SUPERADMIN_EMAIL   || '').toLowerCase();
+const FRONTEND_URL = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
+
+const SUPERADMIN_EMAIL    = (process.env.SUPERADMIN_EMAIL || '').toLowerCase();
 const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || '';
 
-// ── Data files ──────────────────────────────────────────────────────────────
-const DATA_DIR   = path.join(__dirname, 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const ADMINS_FILE = path.join(DATA_DIR, 'admins.json');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(USERS_FILE))  fs.writeFileSync(USERS_FILE,  '{}', 'utf8');
-if (!fs.existsSync(ADMINS_FILE)) fs.writeFileSync(ADMINS_FILE, '{}', 'utf8');
+app.use(express.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, sameSite: 'lax' }
+}));
+app.use(express.static(path.join(__dirname, 'public')));
 
-function readUsers()  { try { return JSON.parse(fs.readFileSync(USERS_FILE,  'utf8')); } catch { return {}; } }
-function writeUsers(u)  { fs.writeFileSync(USERS_FILE,  JSON.stringify(u,  null, 2), 'utf8'); }
-function readAdmins() { try { return JSON.parse(fs.readFileSync(ADMINS_FILE, 'utf8')); } catch { return {}; } }
-function writeAdmins(a) { fs.writeFileSync(ADMINS_FILE, JSON.stringify(a, null, 2), 'utf8'); }
+/* ════════════════════════ RATE LIMITERS ════════════════════════ */
 
-// ── Password helpers ─────────────────────────────────────────────────────────
-function hashPassword(plain) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(plain, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
-}
-function verifyPassword(plain, stored) {
-  try {
-    const [salt, hash] = stored.split(':');
-    const attempt = crypto.scryptSync(plain, salt, 64).toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(attempt, 'hex'));
-  } catch { return false; }
-}
-
-function publicUser(u) {
-  const { passwordHash, ...safe } = u;
-  return safe;
-}
-
-// ── Zepto Mail (nodemailer SMTP) ─────────────────────────────────────────────
-const mailer = nodemailer.createTransport({
-  host:   process.env.ZEPTO_HOST || 'smtp.zeptomail.in',
-  port:   parseInt(process.env.ZEPTO_PORT || '587', 10),
-  secure: false,
-  auth: {
-    user: process.env.ZEPTO_USER,
-    pass: process.env.ZEPTO_PASS,
-  },
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' }
+});
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many signup attempts. Please try again later.' }
 });
 
-if (process.env.ZEPTO_USER) {
-  mailer.verify((err) => {
-    if (err) console.error('[mail] Zepto Mail not reachable:', err.message);
-    else     console.log('[mail] Zepto Mail SMTP ready');
-  });
+/* ════════════════════════ ZEPTO MAIL ════════════════════════ */
+
+const mailer = nodemailer.createTransport({
+  host: process.env.ZEPTO_HOST || 'smtp.zeptomail.in',
+  port: parseInt(process.env.ZEPTO_PORT || '587', 10),
+  secure: false,
+  auth: { user: process.env.ZEPTO_USER, pass: process.env.ZEPTO_PASS }
+});
+
+if (process.env.ZEPTO_USER && process.env.ZEPTO_PASS) {
+  mailer.verify().then(
+    () => console.log('[mail] Zepto Mail SMTP ready'),
+    err => console.warn('[mail] Zepto Mail not reachable:', err.message)
+  );
 } else {
-  console.warn('[mail] ZEPTO_USER not set — emails disabled');
+  console.warn('[mail] ZEPTO_USER / ZEPTO_PASS not set — emails will be skipped');
 }
 
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-// ── Email footer shared block ────────────────────────────────────────────────
-function emailServicesBlock() {
-  return `
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;border-top:1px solid #e8e3da;padding-top:24px;">
-      <tr>
-        <td style="padding:0 0 16px 0;">
-          <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;">What all can you do with EduMitra?</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:0 0 12px 0;">
-          <p style="margin:0 0 4px 0;font-size:13px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;">Study Abroad Application</p>
-          <p style="margin:0;font-size:12px;color:#555;font-family:Arial,sans-serif;line-height:1.5;">Personalised end-to-end study abroad, visa assistance, SOPs, best university selection, scholarships, interview preparation, and more.</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:0 0 12px 0;">
-          <p style="margin:0 0 4px 0;font-size:13px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;">Job Placement Assistance</p>
-          <p style="margin:0;font-size:12px;color:#555;font-family:Arial,sans-serif;line-height:1.5;">Interview line-up assistance, professional resume, cover letter, online profiling, interview preparation, career assessment, and more.</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:0 0 12px 0;">
-          <p style="margin:0 0 4px 0;font-size:13px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;">Job Transition</p>
-          <p style="margin:0;font-size:12px;color:#555;font-family:Arial,sans-serif;line-height:1.5;">Personalised guidance for career transitions, skills assessment, industry-specific coaching, and placement support tailored to your goals.</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-top:16px;border-top:1px solid #e8e3da;">
-          <p style="margin:0;font-size:11px;color:#999;font-family:Arial,sans-serif;">You received this email because you signed-up on EduMitra platform for our services &nbsp;|&nbsp; &copy; Funds And Toil Private Limited (EduMitra) | Made with love in India</p>
-        </td>
-      </tr>
-    </table>
-  `;
-}
-
-// ── Welcome email (buyer's template) ─────────────────────────────────────────
-function welcomeEmailHtml(name) {
-  const firstName = escapeHtml((name || 'there').split(' ')[0]);
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f1ea;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ea;padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-          <!-- Header -->
-          <tr>
-            <td style="background:#0a1628;padding:28px 40px;">
-              <p style="margin:0;font-size:22px;font-weight:700;color:#faf7f2;font-family:Arial,sans-serif;letter-spacing:-0.3px;">EduMitra</p>
-              <p style="margin:4px 0 0 0;font-size:12px;color:#a0aec0;font-family:Arial,sans-serif;">by Funds And Toil Private Limited</p>
-            </td>
-          </tr>
-          <!-- Body -->
-          <tr>
-            <td style="padding:36px 40px 28px 40px;">
-              <p style="margin:0 0 16px 0;font-size:16px;color:#0a1628;font-family:Arial,sans-serif;">Dear ${firstName},</p>
-
-              <p style="margin:0 0 16px 0;font-size:15px;color:#333;line-height:1.7;font-family:Arial,sans-serif;">
-                Thank you for signing up, and welcome to <strong>EduMitra</strong> — where global education and career transitions become clearer and more achievable.
-              </p>
-
-              <p style="margin:0 0 16px 0;font-size:15px;color:#333;line-height:1.7;font-family:Arial,sans-serif;">
-                Whether you are exploring study-abroad options, planning a job transition, or seeking placement assistance, our experts are ready to guide you.
-              </p>
-
-              <p style="margin:0 0 24px 0;font-size:15px;color:#333;line-height:1.7;font-family:Arial,sans-serif;">
-                We have received your details and we will be in touch shortly to discuss your goals and next steps. If you have any immediate questions, reply to this email and we will respond quickly.
-              </p>
-
-              <!-- Next steps box -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ea;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
-                <tr>
-                  <td>
-                    <p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.5px;">Next Steps</p>
-                    <p style="margin:0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.6;">Once your account is approved, you can update your profile and upload documents directly from your dashboard.</p>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0 0 4px 0;font-size:15px;color:#333;font-family:Arial,sans-serif;">Warm regards,</p>
-              <p style="margin:0;font-size:15px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;">The EduMitra Team</p>
-
-              ${emailServicesBlock()}
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-}
-
-// ── Approval email (branded, no buyer template provided) ─────────────────────
-function approvalEmailHtml(name) {
-  const firstName = escapeHtml((name || 'there').split(' ')[0]);
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f1ea;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ea;padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-          <tr>
-            <td style="background:#0a1628;padding:28px 40px;">
-              <p style="margin:0;font-size:22px;font-weight:700;color:#faf7f2;font-family:Arial,sans-serif;letter-spacing:-0.3px;">EduMitra</p>
-              <p style="margin:4px 0 0 0;font-size:12px;color:#a0aec0;font-family:Arial,sans-serif;">by Funds And Toil Private Limited</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:36px 40px 28px 40px;">
-              <p style="margin:0 0 16px 0;font-size:16px;color:#0a1628;font-family:Arial,sans-serif;">Dear ${firstName},</p>
-
-              <p style="margin:0 0 16px 0;font-size:15px;color:#333;line-height:1.7;font-family:Arial,sans-serif;">
-                Great news — your EduMitra account has been <strong style="color:#16a34a;">approved</strong>! You can now log in and access your personal dashboard.
-              </p>
-
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
-                <tr>
-                  <td align="center">
-                    <a href="${FRONTEND_URL}/dashboard.html"
-                       style="display:inline-block;background:#0a1628;color:#faf7f2;text-decoration:none;
-                              padding:14px 32px;border-radius:8px;font-size:14px;font-weight:700;
-                              font-family:Arial,sans-serif;letter-spacing:0.2px;">
-                      Go to My Dashboard →
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0 0 16px 0;font-size:14px;color:#555;line-height:1.7;font-family:Arial,sans-serif;">
-                From your dashboard you can update your profile, upload documents, and book counselling sessions once available.
-              </p>
-
-              <p style="margin:0 0 4px 0;font-size:15px;color:#333;font-family:Arial,sans-serif;">Warm regards,</p>
-              <p style="margin:0;font-size:15px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;">The EduMitra Team</p>
-
-              ${emailServicesBlock()}
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-}
-
-// ── Send helper ───────────────────────────────────────────────────────────────
 async function sendEmail({ to, subject, html }) {
   if (!process.env.ZEPTO_USER) {
-    console.warn('[mail] ZEPTO_USER not set — skipping email to', to);
+    console.warn('[mail] skipping email to', to, '(no SMTP credentials)');
     return;
   }
   try {
-    await mailer.sendMail({ from: process.env.ZEPTO_FROM, to, subject, html });
+    await mailer.sendMail({
+      from: process.env.ZEPTO_FROM || 'info@edumitra.co',
+      to, subject, html
+    });
     console.log('[mail] sent to', to, '·', subject);
   } catch (err) {
     console.error('[mail] failed to', to, '·', err.message);
   }
 }
 
-// ── Rate limiters ─────────────────────────────────────────────────────────────
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-const signupLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  message: { error: 'Too many sign-up attempts from this IP. Please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+/* ════════════════════════ JSON-FILE "DATABASE" ════════════════════════ */
 
-// ── Express setup ─────────────────────────────────────────────────────────────
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  },
-}));
+const USERS_FILE       = path.join(__dirname, 'data', 'users.json');
+const ADMINS_FILE      = path.join(__dirname, 'data', 'admins.json');
+const COUNSELLORS_FILE = path.join(__dirname, 'data', 'counsellors.json');
+const SLOTS_FILE       = path.join(__dirname, 'data', 'slots.json');
 
-// Serve static files from /public
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ── Auth helpers ──────────────────────────────────────────────────────────────
-function requireStudent(req, res, next) {
-  if (req.session.user?.role === 'student') return next();
-  res.status(401).json({ error: 'Not authenticated as student.' });
+function readJSON(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e) { return {}; }
 }
-function requireAdmin(req, res, next) {
-  if (['admin', 'superadmin'].includes(req.session.user?.role)) return next();
-  res.status(401).json({ error: 'Not authenticated as admin.' });
+function writeJSON(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
+const readUsers        = () => readJSON(USERS_FILE);
+const writeUsers       = (u) => writeJSON(USERS_FILE, u);
+const readAdmins       = () => readJSON(ADMINS_FILE);
+const writeAdmins      = (a) => writeJSON(ADMINS_FILE, a);
+const readCounsellors  = () => readJSON(COUNSELLORS_FILE);
+const writeCounsellors = (c) => writeJSON(COUNSELLORS_FILE, c);
+const readSlots        = () => readJSON(SLOTS_FILE);
+const writeSlots       = (s) => writeJSON(SLOTS_FILE, s);
 
-// ── /api/me ───────────────────────────────────────────────────────────────────
-app.get('/api/me', (req, res) => {
-  if (!req.session.user) return res.json({ loggedIn: false });
-  res.json({ loggedIn: true, user: req.session.user });
-});
-
-// ── Student auth ──────────────────────────────────────────────────────────────
-app.post('/api/auth/signup', signupLimiter, (req, res) => {
-  const { name, email, password } = req.body || {};
-  if (!name || !email || !password)
-    return res.status(400).json({ error: 'Name, email and password are required.' });
-  if (password.length < 8)
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
-
+function upsertUser(profile) {
   const users = readUsers();
-  const key = email.toLowerCase();
-  if (users[key]) return res.status(409).json({ error: 'An account already exists for this email.' });
-
-  users[key] = {
-    name,
-    email: key,
-    passwordHash: hashPassword(password),
-    approved: false,
-    provider: 'email',
-    registeredAt: Date.now(),
-  };
+  const key = profile.email.toLowerCase();
+  users[key] = { ...users[key], ...profile, email: key, updatedAt: new Date().toISOString() };
   writeUsers(users);
+  return users[key];
+}
 
-  req.session.user = { role: 'student', ...publicUser(users[key]) };
+function publicUser(u) {
+  if (!u) return u;
+  const { passwordHash, ...safe } = u;
+  return safe;
+}
 
-  // Fire-and-forget welcome email
-  sendEmail({
-    to: key,
-    subject: 'Welcome to EduMitra',
-    html: welcomeEmailHtml(name),
-  });
+/* ════════════════════════ PASSWORD HASHING + GENERATION ════════════════════════ */
 
-  res.json({ ok: true, user: req.session.user });
-});
-
-app.post('/api/auth/login', loginLimiter, (req, res) => {
-  const { email, password } = req.body || {};
-  const GENERIC = 'Invalid email or password.';
-  const users = readUsers();
-  const user = users[(email || '').toLowerCase()];
-  if (!user)             return res.status(401).json({ error: GENERIC });
-  if (!user.passwordHash) return res.status(401).json({ error: GENERIC });
-  if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: GENERIC });
-
-  req.session.user = { role: 'student', ...publicUser(user) };
-  res.json({ ok: true, user: req.session.user });
-});
-
-app.post('/api/auth/logout', (req, res) => {
-  req.session.destroy(() => res.json({ ok: true }));
-});
-app.get('/auth/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/'));
-});
-
-// ── Forgot password ───────────────────────────────────────────────────────────
-const resetTokens = {}; // { token: { email, expires } }
-
-app.post('/api/auth/forgot-password', loginLimiter, async (req, res) => {
-  const { email } = req.body || {};
-  if (!email) return res.status(400).json({ error: 'Email is required.' });
-
-  const key = email.toLowerCase();
-  const users = readUsers();
-
-  // Always return the same response to prevent email enumeration
-  res.json({ ok: true, message: 'If that email is registered, a reset link has been sent.' });
-
-  if (!users[key] || !users[key].passwordHash) return; // OAuth-only account or not found
-
-  const token = crypto.randomBytes(32).toString('hex');
-  resetTokens[token] = { email: key, expires: Date.now() + 60 * 60 * 1000 }; // 1 hour
-
-  const resetLink = `${FRONTEND_URL}/reset-password.html?token=${token}`;
-
-  sendEmail({
-    to: key,
-    subject: 'Reset your EduMitra password',
-    html: `
-<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f4f1ea;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ea;padding:32px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
-        <tr><td style="background:#0a1628;padding:28px 40px;">
-          <p style="margin:0;font-size:22px;font-weight:700;color:#faf7f2;font-family:Arial,sans-serif;">EduMitra</p>
-          <p style="margin:4px 0 0;font-size:12px;color:#a0aec0;font-family:Arial,sans-serif;">by Funds And Toil Private Limited</p>
-        </td></tr>
-        <tr><td style="padding:36px 40px 28px;">
-          <p style="margin:0 0 16px;font-size:15px;color:#333;line-height:1.7;font-family:Arial,sans-serif;">
-            We received a request to reset your EduMitra password. Click the button below to choose a new password.
-          </p>
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
-            <tr><td align="center">
-              <a href="${resetLink}"
-                 style="display:inline-block;background:#0a1628;color:#faf7f2;text-decoration:none;
-                        padding:14px 32px;border-radius:8px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;">
-                Reset Password →
-              </a>
-            </td></tr>
-          </table>
-          <p style="margin:0 0 16px;font-size:13px;color:#888;line-height:1.6;font-family:Arial,sans-serif;">
-            This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email — your password will not change.
-          </p>
-          <p style="margin:0 0 4px;font-size:15px;color:#333;font-family:Arial,sans-serif;">Warm regards,</p>
-          <p style="margin:0;font-size:15px;font-weight:700;color:#0a1628;font-family:Arial,sans-serif;">The EduMitra Team</p>
-          ${emailServicesBlock()}
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
-  });
-});
-
-app.post('/api/auth/reset-password', (req, res) => {
-  const { token, password } = req.body || {};
-  if (!token || !password)
-    return res.status(400).json({ error: 'Token and new password are required.' });
-  if (password.length < 8)
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
-
-  const record = resetTokens[token];
-  if (!record || record.expires < Date.now()) {
-    delete resetTokens[token];
-    return res.status(400).json({ error: 'Reset link is invalid or has expired.' });
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false;
+  const [salt, hash] = stored.split(':');
+  const attempt = crypto.scryptSync(password, salt, 64).toString('hex');
+  try { return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(attempt, 'hex')); }
+  catch (e) { return false; }
+}
+function generatePassword() {
+  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digit = '23456789';
+  const symbol = '!@#$%&*';
+  const all = upper + lower + digit + symbol;
+  let pw = [
+    upper[crypto.randomInt(0, upper.length)],
+    lower[crypto.randomInt(0, lower.length)],
+    digit[crypto.randomInt(0, digit.length)],
+    symbol[crypto.randomInt(0, symbol.length)],
+  ];
+  for (let i = 0; i < 8; i++) pw.push(all[crypto.randomInt(0, all.length)]);
+  for (let i = pw.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [pw[i], pw[j]] = [pw[j], pw[i]];
   }
+  return pw.join('');
+}
 
-  const users = readUsers();
-  if (!users[record.email])
-    return res.status(400).json({ error: 'Account not found.' });
+/* ════════════════════════ ROLE MIDDLEWARE ════════════════════════ */
 
-  users[record.email].passwordHash = hashPassword(password);
-  writeUsers(users);
-  delete resetTokens[token];
+function requireAdmin(req, res, next) {
+  if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'superadmin')) return next();
+  res.status(401).json({ error: 'Not authorized.' });
+}
+function requireSuperAdmin(req, res, next) {
+  if (req.session.user && req.session.user.role === 'superadmin') return next();
+  res.status(401).json({ error: 'Super admin access only.' });
+}
+function requireCounsellor(req, res, next) {
+  if (req.session.user && req.session.user.role === 'counsellor') return next();
+  res.status(401).json({ error: 'Counsellor access only.' });
+}
+function requireStudent(req, res, next) {
+  if (req.session.user && req.session.user.role === 'student') return next();
+  res.status(401).json({ error: 'Please sign in first.' });
+}
 
-  res.json({ ok: true, message: 'Password updated. You can now log in.' });
-});
+/* ════════════════════════ EMAIL TEMPLATES ════════════════════════ */
 
-// ── Google OAuth ──────────────────────────────────────────────────────────────
+function escapeForEmail(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function welcomeEmailHtml(name) {
+  return `<!DOCTYPE html>
+<html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
+    <h2 style="font-family:'Playfair Display',Georgia,serif;color:#0a1628;margin:0 0 12px;">Welcome to EduMitra</h2>
+    <p style="line-height:1.6;font-size:14.5px;">Hi ${escapeForEmail(name || 'there')},</p>
+    <p style="line-height:1.6;font-size:14.5px;">Thank you for signing up. Your registration has been received and our team will review it shortly.</p>
+    <p style="line-height:1.6;font-size:14.5px;">Once approved, you will receive another email and can access your student dashboard.</p>
+    <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— Team EduMitra</p>
+  </div>
+</body></html>`;
+}
+
+function approvalEmailHtml(name, dashboardUrl) {
+  return `<!DOCTYPE html>
+<html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
+    <h2 style="font-family:'Playfair Display',Georgia,serif;color:#0a1628;margin:0 0 12px;">Your account is approved</h2>
+    <p style="line-height:1.6;font-size:14.5px;">Hi ${escapeForEmail(name || 'there')},</p>
+    <p style="line-height:1.6;font-size:14.5px;">Good news — your EduMitra account has been approved. You can now access your student dashboard.</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${dashboardUrl}" style="display:inline-block;padding:12px 28px;background:#0a1628;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">Go to my dashboard</a>
+    </p>
+    <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— Team EduMitra</p>
+  </div>
+</body></html>`;
+}
+
+function counsellorWelcomeEmailHtml(name, email, password, loginUrl) {
+  return `<!DOCTYPE html>
+<html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
+    <h2 style="font-family:'Playfair Display',Georgia,serif;color:#0a1628;margin:0 0 12px;">Welcome to EduMitra, ${escapeForEmail(name)}</h2>
+    <p style="line-height:1.6;font-size:14.5px;">Your counsellor account on EduMitra has been created.</p>
+    <div style="background:#faf7f2;border:1px solid #eaedf5;border-radius:10px;padding:20px;margin:22px 0;">
+      <p style="margin:0 0 10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#6b7280;">Your login details</p>
+      <p style="margin:0 0 6px;font-size:14.5px;"><strong>Email:</strong> ${escapeForEmail(email)}</p>
+      <p style="margin:0;font-size:14.5px;"><strong>Temporary password:</strong> <code style="background:#fff;padding:3px 8px;border-radius:4px;border:1px solid #eaedf5;font-size:14px;">${escapeForEmail(password)}</code></p>
+    </div>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${loginUrl}" style="display:inline-block;padding:12px 28px;background:#0a1628;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">Log in to counsellor portal</a>
+    </p>
+    <p style="line-height:1.6;font-size:13px;color:#6b7280;">For your security, please change this password after your first login from My Profile in the counsellor dashboard.</p>
+    <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— Team EduMitra</p>
+  </div>
+</body></html>`;
+}
+
+function bookingEmailHtml({ studentName, counsellorName, date, startTime, endTime, label, meetLink }) {
+  const niceDate = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  return `<!DOCTYPE html>
+<html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
+    <h2 style="font-family:'Playfair Display',Georgia,serif;color:#0a1628;margin:0 0 12px;">Your counselling session is booked</h2>
+    <p style="line-height:1.6;font-size:14.5px;">Hi ${escapeForEmail(studentName)},</p>
+    <p style="line-height:1.6;font-size:14.5px;">Your slot with <strong>${escapeForEmail(counsellorName)}</strong> has been confirmed on Google Calendar. A Google Meet link has been generated for the call.</p>
+    <div style="background:#faf7f2;border:1px solid #eaedf5;border-radius:10px;padding:20px;margin:22px 0;">
+      <p style="margin:0 0 6px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;">Session details</p>
+      <p style="margin:6px 0 0;font-size:14.5px;"><strong>Date:</strong> ${niceDate}</p>
+      <p style="margin:6px 0 0;font-size:14.5px;"><strong>Time:</strong> ${startTime} – ${endTime} (IST)</p>
+      <p style="margin:6px 0 0;font-size:14.5px;"><strong>Topic:</strong> ${escapeForEmail(label || 'General Counselling')}</p>
+    </div>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${meetLink}" style="display:inline-block;padding:13px 32px;background:#0a1628;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">Join Google Meet</a>
+    </p>
+    <p style="line-height:1.6;font-size:13px;color:#6b7280;">If the button does not work, paste this into your browser:<br><a href="${meetLink}" style="color:#c8953a;word-break:break-all;">${meetLink}</a></p>
+    <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— Team EduMitra</p>
+  </div>
+</body></html>`;
+}
+
+/* ════════════════════════ GOOGLE LOGIN OAUTH (existing) ════════════════════════ */
+
 app.get('/auth/google', (req, res) => {
-  if (!GOOGLE_CLIENT_ID) return res.status(501).send('Google OAuth not configured.');
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
   const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: GOOGLE_REDIRECT_URI,
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
     response_type: 'code',
     scope: 'openid email profile',
-    access_type: 'offline',
-    prompt: 'consent',
+    state, prompt: 'select_account'
   });
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 });
 
 app.get('/auth/google/callback', async (req, res) => {
-  const { code, error } = req.query;
-  if (error || !code) return res.redirect('/?auth_error=google_denied');
   try {
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code, client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: GOOGLE_REDIRECT_URI, grant_type: 'authorization_code',
-      }),
-    });
-    const tokens = await tokenRes.json();
-    if (tokens.error) throw new Error(tokens.error_description || tokens.error);
-
-    const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
-    });
-    const profile = await userInfoRes.json();
-
-    const users = readUsers();
-    const key = profile.email.toLowerCase();
-    const isNew = !users[key];
-
-    if (isNew) {
-      users[key] = {
-        name: profile.name || profile.email,
-        email: key,
-        approved: false,
-        provider: 'google',
-        registeredAt: Date.now(),
-      };
-      writeUsers(users);
-      sendEmail({
-        to: key,
-        subject: 'Welcome to EduMitra',
-        html: welcomeEmailHtml(profile.name || profile.email),
-      });
+    const { code, state } = req.query;
+    if (!code || state !== req.session.oauthState) {
+      return res.redirect(`${FRONTEND_URL}/?auth=error&reason=state_mismatch`);
     }
-
-    req.session.user = { role: 'student', ...publicUser(users[key]) };
-    res.redirect('/');
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI, grant_type: 'authorization_code'
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) throw new Error('Google did not return an access token');
+    const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    });
+    const profile = await profileRes.json();
+    const existing = readUsers()[profile.email.toLowerCase()];
+    const isNew = !existing;
+    const user = upsertUser({
+      name: profile.name, email: profile.email, picture: profile.picture, provider: 'google',
+      approved: existing ? existing.approved : false,
+      registeredAt: existing ? existing.registeredAt : Date.now()
+    });
+    req.session.user = { role: 'student', ...publicUser(user) };
+    if (isNew) sendEmail({ to: user.email, subject: 'Welcome to EduMitra', html: welcomeEmailHtml(user.name) });
+    res.redirect(`${FRONTEND_URL}/?auth=success`);
   } catch (err) {
-    console.error('[google-oauth]', err.message);
-    res.redirect('/?auth_error=google_failed');
+    console.error('Google OAuth error:', err);
+    res.redirect(`${FRONTEND_URL}/?auth=error&reason=google_failed`);
   }
 });
 
-// ── LinkedIn OAuth ────────────────────────────────────────────────────────────
+/* ════════════════════════ LINKEDIN OAUTH (existing) ════════════════════════ */
+
 app.get('/auth/linkedin', (req, res) => {
-  if (!LINKEDIN_CLIENT_ID) return res.status(501).send('LinkedIn OAuth not configured.');
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
   const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: LINKEDIN_CLIENT_ID,
-    redirect_uri: LINKEDIN_REDIRECT_URI,
-    scope: 'openid profile email',
+    client_id: process.env.LINKEDIN_CLIENT_ID, redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
+    response_type: 'code', scope: 'openid profile email', state
   });
   res.redirect(`https://www.linkedin.com/oauth/v2/authorization?${params}`);
 });
 
 app.get('/auth/linkedin/callback', async (req, res) => {
-  const { code, error } = req.query;
-  if (error || !code) return res.redirect('/?auth_error=linkedin_denied');
   try {
+    const { code, state } = req.query;
+    if (!code || state !== req.session.oauthState) {
+      return res.redirect(`${FRONTEND_URL}/?auth=error&reason=state_mismatch`);
+    }
     const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code, client_id: LINKEDIN_CLIENT_ID, client_secret: LINKEDIN_CLIENT_SECRET,
-        redirect_uri: LINKEDIN_REDIRECT_URI,
-      }),
+        grant_type: 'authorization_code', code,
+        client_id: process.env.LINKEDIN_CLIENT_ID, client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+        redirect_uri: process.env.LINKEDIN_REDIRECT_URI
+      })
     });
-    const tokens = await tokenRes.json();
-    if (tokens.error) throw new Error(tokens.error_description || tokens.error);
-
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) throw new Error('LinkedIn did not return an access token');
     const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
     });
     const profile = await profileRes.json();
-
-    const email = (profile.email || '').toLowerCase();
-    if (!email) throw new Error('LinkedIn did not return an email address.');
-
-    const users = readUsers();
-    const isNew = !users[email];
-
-    if (isNew) {
-      users[email] = {
-        name: profile.name || email,
-        email,
-        approved: false,
-        provider: 'linkedin',
-        registeredAt: Date.now(),
-      };
-      writeUsers(users);
-      sendEmail({
-        to: email,
-        subject: 'Welcome to EduMitra',
-        html: welcomeEmailHtml(profile.name || email),
-      });
-    }
-
-    req.session.user = { role: 'student', ...publicUser(users[email]) };
-    res.redirect('/');
+    const existing = readUsers()[profile.email.toLowerCase()];
+    const isNew = !existing;
+    const user = upsertUser({
+      name: profile.name, email: profile.email, picture: profile.picture, provider: 'linkedin',
+      approved: existing ? existing.approved : false,
+      registeredAt: existing ? existing.registeredAt : Date.now()
+    });
+    req.session.user = { role: 'student', ...publicUser(user) };
+    if (isNew) sendEmail({ to: user.email, subject: 'Welcome to EduMitra', html: welcomeEmailHtml(user.name) });
+    res.redirect(`${FRONTEND_URL}/?auth=success`);
   } catch (err) {
-    console.error('[linkedin-oauth]', err.message);
-    res.redirect('/?auth_error=linkedin_failed');
+    console.error('LinkedIn OAuth error:', err);
+    res.redirect(`${FRONTEND_URL}/?auth=error&reason=linkedin_failed`);
   }
 });
 
-// ── Admin auth ────────────────────────────────────────────────────────────────
+/* ════════════════════════ STUDENT AUTH (existing) ════════════════════════ */
+
+app.post('/api/auth/signup', signupLimiter, (req, res) => {
+  const { name, email, password } = req.body || {};
+  if (!name || !email || !/\S+@\S+\.\S+/.test(email)) return res.status(400).json({ error: 'Please enter a valid name and email.' });
+  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  const key = email.toLowerCase();
+  if (readUsers()[key]) return res.status(409).json({ error: 'An account already exists for this email. Please sign in instead.' });
+  const user = upsertUser({
+    name, email, passwordHash: hashPassword(password),
+    provider: 'password', approved: false, registeredAt: Date.now()
+  });
+  req.session.user = { role: 'student', ...publicUser(user) };
+  sendEmail({ to: user.email, subject: 'Welcome to EduMitra', html: welcomeEmailHtml(user.name) });
+  res.json({ ok: true, user: req.session.user });
+});
+
+app.post('/api/auth/login', loginLimiter, (req, res) => {
+  const { email, password } = req.body || {};
+  const user = readUsers()[(email || '').toLowerCase()];
+  const GENERIC = 'Invalid email or password.';
+  if (!user) return res.status(401).json({ error: GENERIC });
+  if (!user.passwordHash) return res.status(401).json({ error: GENERIC });
+  if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: GENERIC });
+  req.session.user = { role: 'student', ...publicUser(user) };
+  res.json({ ok: true, user: req.session.user });
+});
+
+app.post('/api/auth/verify', (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'student') return res.status(401).json({ error: 'Please sign in first.' });
+  const verifyData = { ...req.body, submittedAt: Date.now(), verificationStatus: 'pending' };
+  const user = upsertUser({ email: req.session.user.email, verifyData });
+  req.session.user = { role: 'student', ...publicUser(user) };
+  res.json({ ok: true, user: req.session.user });
+});
+
+app.get('/api/me', (req, res) => {
+  if (req.session.user) return res.json({ loggedIn: true, user: req.session.user });
+  res.json({ loggedIn: false });
+});
+
+app.post('/api/logout', (req, res) => { req.session.destroy(() => res.json({ ok: true })); });
+app.get('/auth/logout', (req, res) => { req.session.destroy(() => res.redirect(`${FRONTEND_URL}/`)); });
+
+/* ════════════════════════ ADMIN (existing) ════════════════════════ */
+
 app.post('/api/admin/login', loginLimiter, (req, res) => {
   const { email, password } = req.body || {};
   const key = (email || '').toLowerCase();
   const GENERIC = 'Invalid email or password.';
-
   if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
     if (password === SUPERADMIN_PASSWORD) {
       req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
@@ -575,124 +392,96 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
     }
     return res.status(401).json({ error: GENERIC });
   }
-
-  const admins = readAdmins();
-  const admin = admins[key];
+  const admin = readAdmins()[key];
   if (!admin) return res.status(401).json({ error: GENERIC });
   if (!verifyPassword(password || '', admin.passwordHash)) return res.status(401).json({ error: GENERIC });
-
   req.session.user = { role: 'admin', email: key, name: admin.name };
   res.json({ ok: true, user: req.session.user });
 });
 
-app.post('/api/admin/logout', (req, res) => {
-  req.session.destroy(() => res.json({ ok: true }));
+app.get('/api/admin/me', (req, res) => {
+  if (req.session.user && (req.session.user.role === 'admin' || req.session.user.role === 'superadmin')) {
+    return res.json({ loggedIn: true, user: req.session.user });
+  }
+  res.json({ loggedIn: false });
 });
 
-app.get('/api/admin/me', requireAdmin, (req, res) => {
-  res.json({ ok: true, user: req.session.user });
-});
-
-// ── Admin → students ──────────────────────────────────────────────────────────
 app.get('/api/admin/students', requireAdmin, (req, res) => {
-  const users = readUsers();
-  res.json({ students: Object.values(users).map(publicUser) });
+  const list = Object.values(readUsers()).map(publicUser);
+  res.json({ students: list });
 });
 
 app.post('/api/admin/students/:email/approve', requireAdmin, (req, res) => {
   const key = req.params.email.toLowerCase();
   const users = readUsers();
-  if (!users[key]) return res.status(404).json({ error: 'User not found.' });
-  if (users[key].approved) return res.json({ ok: true, message: 'Already approved.' });
-
-  users[key].approved = true;
-  users[key].approvedAt = Date.now();
-  writeUsers(users);
-
-  // Send approval email
-  sendEmail({
-    to: key,
-    subject: 'Your EduMitra account is approved',
-    html: approvalEmailHtml(users[key].name),
-  });
-
+  if (!users[key]) return res.status(404).json({ error: 'Student not found.' });
+  const wasAlreadyApproved = users[key].approved === true;
+  const verifyData = { ...(users[key].verifyData || {}), verificationStatus: 'approved' };
+  const updated = upsertUser({ email: key, approved: true, verifyData, adminNote: req.body?.note || '' });
+  if (!wasAlreadyApproved) {
+    sendEmail({
+      to: updated.email, subject: 'Your EduMitra account is approved',
+      html: approvalEmailHtml(updated.name, `${FRONTEND_URL}/dashboard.html`)
+    });
+  }
   res.json({ ok: true });
 });
 
 app.post('/api/admin/students/:email/reject', requireAdmin, (req, res) => {
   const key = req.params.email.toLowerCase();
   const users = readUsers();
-  if (!users[key]) return res.status(404).json({ error: 'User not found.' });
-  users[key].approved = false;
-  users[key].rejectedAt = Date.now();
-  writeUsers(users);
+  if (!users[key]) return res.status(404).json({ error: 'Student not found.' });
+  const verifyData = { ...(users[key].verifyData || {}), verificationStatus: 'rejected' };
+  upsertUser({ email: key, approved: false, verifyData, adminNote: req.body?.note || '' });
   res.json({ ok: true });
 });
 
-app.delete('/api/admin/students/:email', requireAdmin, (req, res) => {
-  const key = req.params.email.toLowerCase();
-  const users = readUsers();
-  if (!users[key]) return res.status(404).json({ error: 'User not found.' });
-  delete users[key];
-  writeUsers(users);
-  res.json({ ok: true });
-});
-
-// ── Admin analytics ───────────────────────────────────────────────────────────
 app.get('/api/admin/analytics', requireAdmin, (req, res) => {
-  const users = readUsers();
-  const all = Object.values(users);
-  const total = all.length;
-  const approved = all.filter(u => u.approved).length;
-  const pending = total - approved;
-
-  // Signups per day for the last 14 days
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const ts = now - (13 - i) * dayMs;
-    const label = new Date(ts).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-    return { label, count: 0 };
+  const users = Object.values(readUsers());
+  let pending = 0, approved = 0, rejected = 0;
+  users.forEach(u => {
+    const status = u.approved ? 'approved' : (u.verifyData?.verificationStatus === 'rejected' ? 'rejected' : 'pending');
+    if (status === 'approved') approved++;
+    else if (status === 'rejected') rejected++;
+    else pending++;
   });
-  all.forEach(u => {
+  const days = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days.push({ date: d.toISOString().slice(0, 10), count: 0 });
+  }
+  users.forEach(u => {
     if (!u.registeredAt) return;
-    const age = Math.floor((now - u.registeredAt) / dayMs);
-    if (age < 14) days[13 - age].count++;
+    const day = new Date(u.registeredAt).toISOString().slice(0, 10);
+    const bucket = days.find(d => d.date === day);
+    if (bucket) bucket.count++;
   });
-
-  res.json({ total, approved, pending, signupsPerDay: days });
+  const recent = users.filter(u => u.registeredAt).sort((a, b) => b.registeredAt - a.registeredAt).slice(0, 8).map(publicUser);
+  res.json({ total: users.length, pending, approved, rejected, signupsByDay: days, recent });
 });
 
-// ── Superadmin → manage admins ────────────────────────────────────────────────
-app.get('/api/superadmin/admins', requireAdmin, (req, res) => {
-  if (req.session.user.role !== 'superadmin')
-    return res.status(403).json({ error: 'Superadmin only.' });
-  const admins = readAdmins();
-  res.json({ admins: Object.values(admins).map(({ passwordHash, ...a }) => a) });
+/* ════════════════════════ SUPER ADMIN — admins ════════════════════════ */
+
+app.get('/api/superadmin/admins', requireSuperAdmin, (req, res) => {
+  const admins = Object.values(readAdmins()).map(({ passwordHash, ...safe }) => safe);
+  res.json({ admins, superAdminEmail: SUPERADMIN_EMAIL });
 });
 
-app.post('/api/superadmin/admins', requireAdmin, (req, res) => {
-  if (req.session.user.role !== 'superadmin')
-    return res.status(403).json({ error: 'Superadmin only.' });
+app.post('/api/superadmin/admins', requireSuperAdmin, (req, res) => {
   const { name, email, password } = req.body || {};
-  if (!name || !email || !password)
-    return res.status(400).json({ error: 'Name, email and password are required.' });
-
-  const admins = readAdmins();
+  if (!name || !email || !/\S+@\S+\.\S+/.test(email)) return res.status(400).json({ error: 'Please enter a valid name and email.' });
+  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   const key = email.toLowerCase();
-  if (admins[key]) return res.status(409).json({ error: 'Admin already exists.' });
-
-  admins[key] = { name, email: key, passwordHash: hashPassword(password), createdAt: Date.now() };
+  if (key === SUPERADMIN_EMAIL) return res.status(409).json({ error: 'That email is reserved.' });
+  const admins = readAdmins();
+  if (admins[key]) return res.status(409).json({ error: 'An admin with this email already exists.' });
+  admins[key] = { name, email: key, passwordHash: hashPassword(password), createdAt: Date.now(), createdBy: req.session.user.email };
   writeAdmins(admins);
   res.json({ ok: true });
 });
 
-app.delete('/api/superadmin/admins/:email', requireAdmin, (req, res) => {
-  if (req.session.user.role !== 'superadmin')
-    return res.status(403).json({ error: 'Superadmin only.' });
+app.delete('/api/superadmin/admins/:email', requireSuperAdmin, (req, res) => {
   const key = req.params.email.toLowerCase();
-  if (key === SUPERADMIN_EMAIL)
-    return res.status(400).json({ error: 'Cannot delete the superadmin account.' });
   const admins = readAdmins();
   if (!admins[key]) return res.status(404).json({ error: 'Admin not found.' });
   delete admins[key];
@@ -700,5 +489,336 @@ app.delete('/api/superadmin/admins/:email', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Start ─────────────────────────────────────────────────────────────────────
+/* ════════════════════════ SUPER ADMIN — counsellors ════════════════════════ */
+
+app.get('/api/superadmin/counsellors', requireSuperAdmin, (req, res) => {
+  const list = Object.values(readCounsellors()).map(({ passwordHash, google, ...safe }) => ({
+    ...safe,
+    calendarConnected: !!(google && google.refreshToken)
+  }));
+  res.json({ counsellors: list });
+});
+
+app.post('/api/superadmin/counsellors', requireSuperAdmin, async (req, res) => {
+  const { name, email } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: "Please enter the counsellor's name." });
+  if (!email || !/\S+@\S+\.\S+/.test(email)) return res.status(400).json({ error: 'Please enter a valid email.' });
+  const key = email.toLowerCase();
+  const counsellors = readCounsellors();
+  if (counsellors[key]) return res.status(409).json({ error: 'A counsellor with this email already exists.' });
+  if (key === SUPERADMIN_EMAIL) return res.status(409).json({ error: 'That email is reserved.' });
+  if (readAdmins()[key]) return res.status(409).json({ error: 'That email is already used by an admin account.' });
+  const tempPassword = generatePassword();
+  counsellors[key] = {
+    name: name.trim(), email: key, passwordHash: hashPassword(tempPassword),
+    createdAt: Date.now(), createdBy: req.session.user.email
+  };
+  writeCounsellors(counsellors);
+  const loginUrl = `${FRONTEND_URL}/counsellor-login.html`;
+  try {
+    await sendEmail({
+      to: key, subject: 'Welcome to EduMitra — your counsellor account is ready',
+      html: counsellorWelcomeEmailHtml(name.trim(), key, tempPassword, loginUrl)
+    });
+    res.json({ ok: true, emailed: true });
+  } catch (err) {
+    console.error('[counsellor create] email failed:', err.message);
+    res.json({ ok: true, emailed: false, tempPassword,
+      note: 'Account created but the welcome email could not be sent. Share these credentials manually.' });
+  }
+});
+
+app.delete('/api/superadmin/counsellors/:email', requireSuperAdmin, (req, res) => {
+  const key = req.params.email.toLowerCase();
+  const counsellors = readCounsellors();
+  if (!counsellors[key]) return res.status(404).json({ error: 'Counsellor not found.' });
+  delete counsellors[key];
+  writeCounsellors(counsellors);
+  // Cascade delete the counsellor's slots
+  const slots = readSlots();
+  Object.keys(slots).forEach(id => { if (slots[id].counsellorEmail === key) delete slots[id]; });
+  writeSlots(slots);
+  res.json({ ok: true });
+});
+
+/* ════════════════════════ COUNSELLOR AUTH + PASSWORD CHANGE ════════════════════════ */
+
+app.post('/api/counsellor/login', loginLimiter, (req, res) => {
+  const { email, password } = req.body || {};
+  const key = (email || '').toLowerCase();
+  const GENERIC = 'Invalid email or password.';
+  const counsellor = readCounsellors()[key];
+  if (!counsellor) return res.status(401).json({ error: GENERIC });
+  if (!verifyPassword(password || '', counsellor.passwordHash)) return res.status(401).json({ error: GENERIC });
+  req.session.user = { role: 'counsellor', email: key, name: counsellor.name };
+  res.json({ ok: true, user: req.session.user });
+});
+
+app.get('/api/counsellor/me', (req, res) => {
+  if (req.session.user && req.session.user.role === 'counsellor') {
+    return res.json({ loggedIn: true, user: req.session.user });
+  }
+  res.json({ loggedIn: false });
+});
+
+app.post('/api/counsellor/change-password', requireCounsellor, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword) return res.status(400).json({ error: 'Please enter your current password.' });
+  if (!newPassword || newPassword.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  if (newPassword === currentPassword) return res.status(400).json({ error: 'New password must be different from your current password.' });
+  const key = req.session.user.email;
+  const counsellors = readCounsellors();
+  const counsellor = counsellors[key];
+  if (!counsellor) return res.status(404).json({ error: 'Counsellor not found.' });
+  if (!verifyPassword(currentPassword, counsellor.passwordHash)) {
+    return res.status(401).json({ error: 'Current password is incorrect.' });
+  }
+  counsellor.passwordHash = hashPassword(newPassword);
+  counsellor.passwordChangedAt = Date.now();
+  writeCounsellors(counsellors);
+  res.json({ ok: true });
+});
+
+/* ════════════════════════ GOOGLE CALENDAR OAUTH (counsellor connects) ════════════════════════ */
+
+function getOAuth2Client() {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_CALENDAR_REDIRECT_URI || `${FRONTEND_URL}/auth/google/calendar/callback`
+  );
+}
+
+async function getCalendarForCounsellor(counsellorEmail) {
+  const counsellors = readCounsellors();
+  const c = counsellors[counsellorEmail.toLowerCase()];
+  if (!c || !c.google || !c.google.refreshToken) {
+    throw new Error('Counsellor has not connected Google Calendar.');
+  }
+  const oauth2 = getOAuth2Client();
+  oauth2.setCredentials({
+    refresh_token: c.google.refreshToken,
+    access_token: c.google.accessToken,
+    expiry_date: c.google.expiry
+  });
+  oauth2.on('tokens', (tokens) => {
+    try {
+      const fresh = readCounsellors();
+      const ke = counsellorEmail.toLowerCase();
+      if (!fresh[ke]) return;
+      fresh[ke].google = {
+        ...fresh[ke].google,
+        accessToken: tokens.access_token || fresh[ke].google.accessToken,
+        expiry: tokens.expiry_date || fresh[ke].google.expiry,
+        refreshToken: tokens.refresh_token || fresh[ke].google.refreshToken
+      };
+      writeCounsellors(fresh);
+    } catch (e) {}
+  });
+  return google.calendar({ version: 'v3', auth: oauth2 });
+}
+
+app.get('/auth/google/calendar', requireCounsellor, (req, res) => {
+  const oauth2 = getOAuth2Client();
+  const url = oauth2.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: [
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/calendar.readonly'
+    ],
+    state: req.session.user.email
+  });
+  res.redirect(url);
+});
+
+app.get('/auth/google/calendar/callback', async (req, res) => {
+  try {
+    if (!req.session.user || req.session.user.role !== 'counsellor') {
+      return res.redirect(`${FRONTEND_URL}/counsellor-login.html?cal_error=auth`);
+    }
+    const { code, state } = req.query;
+    if (!code) return res.redirect(`${FRONTEND_URL}/counsellor.html?cal_error=no_code`);
+    if (state !== req.session.user.email) return res.redirect(`${FRONTEND_URL}/counsellor.html?cal_error=state`);
+
+    const oauth2 = getOAuth2Client();
+    const { tokens } = await oauth2.getToken(code);
+    const counsellors = readCounsellors();
+    const key = req.session.user.email;
+    if (!counsellors[key]) return res.redirect(`${FRONTEND_URL}/counsellor.html?cal_error=no_counsellor`);
+    counsellors[key].google = {
+      refreshToken: tokens.refresh_token || counsellors[key].google?.refreshToken,
+      accessToken:  tokens.access_token,
+      expiry:       tokens.expiry_date,
+      tokenType:    tokens.token_type,
+      scope:        tokens.scope,
+      connectedAt:  Date.now()
+    };
+    writeCounsellors(counsellors);
+    res.redirect(`${FRONTEND_URL}/counsellor.html?cal_success=1`);
+  } catch (err) {
+    console.error('Calendar OAuth callback error:', err);
+    res.redirect(`${FRONTEND_URL}/counsellor.html?cal_error=token`);
+  }
+});
+
+app.post('/api/counsellor/calendar/disconnect', requireCounsellor, (req, res) => {
+  const counsellors = readCounsellors();
+  const key = req.session.user.email;
+  if (counsellors[key]) {
+    delete counsellors[key].google;
+    writeCounsellors(counsellors);
+  }
+  res.json({ ok: true });
+});
+
+app.get('/api/counsellor/calendar/status', requireCounsellor, (req, res) => {
+  const counsellors = readCounsellors();
+  const c = counsellors[req.session.user.email];
+  res.json({ connected: !!(c && c.google && c.google.refreshToken) });
+});
+
+/* ════════════════════════ SLOTS — counsellor side ════════════════════════ */
+
+app.get('/api/counsellor/slots', requireCounsellor, (req, res) => {
+  const key = req.session.user.email;
+  const slots = Object.values(readSlots())
+    .filter(s => s.counsellorEmail === key)
+    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+  res.json({ slots });
+});
+
+app.post('/api/counsellor/slots', requireCounsellor, (req, res) => {
+  const { date, startTime, endTime, label } = req.body || {};
+  if (!date || !startTime || !endTime) return res.status(400).json({ error: 'Date, start time and end time are required.' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Date must be in YYYY-MM-DD format.' });
+  if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) return res.status(400).json({ error: 'Times must be HH:MM.' });
+  if (startTime >= endTime) return res.status(400).json({ error: 'End time must be after start time.' });
+
+  const counsellors = readCounsellors();
+  const c = counsellors[req.session.user.email];
+  if (!c || !c.google || !c.google.refreshToken) {
+    return res.status(400).json({ error: 'Please connect your Google Calendar first.' });
+  }
+
+  const slots = readSlots();
+  const id = Date.now();
+  slots[id] = {
+    id, counsellorEmail: req.session.user.email,
+    date, startTime, endTime, label: (label || '').trim() || 'General Counselling',
+    booked: false, bookedBy: null, bookedAt: null,
+    googleEventId: null, meetLink: null, createdAt: Date.now()
+  };
+  writeSlots(slots);
+  res.json({ ok: true, slot: slots[id] });
+});
+
+app.delete('/api/counsellor/slots/:id', requireCounsellor, async (req, res) => {
+  const id = req.params.id;
+  const slots = readSlots();
+  const slot = slots[id];
+  if (!slot) return res.status(404).json({ error: 'Slot not found.' });
+  if (slot.counsellorEmail !== req.session.user.email) return res.status(403).json({ error: 'Not your slot.' });
+  if (slot.booked && slot.googleEventId) {
+    try {
+      const cal = await getCalendarForCounsellor(slot.counsellorEmail);
+      await cal.events.delete({ calendarId: 'primary', eventId: slot.googleEventId, sendUpdates: 'all' });
+    } catch (err) {
+      console.warn('Could not delete calendar event:', err.message);
+    }
+  }
+  delete slots[id];
+  writeSlots(slots);
+  res.json({ ok: true });
+});
+
+/* ════════════════════════ SLOTS — student side ════════════════════════ */
+
+// All available future slots from all counsellors
+app.get('/api/student/slots', requireStudent, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const counsellors = readCounsellors();
+  const slots = Object.values(readSlots())
+    .filter(s => !s.booked && s.date >= today)
+    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
+    .map(s => ({ ...s, counsellorName: counsellors[s.counsellorEmail]?.name || 'Counsellor' }));
+  res.json({ slots });
+});
+
+// Student's booked sessions
+app.get('/api/student/bookings', requireStudent, (req, res) => {
+  const counsellors = readCounsellors();
+  const list = Object.values(readSlots())
+    .filter(s => s.bookedBy === req.session.user.email)
+    .sort((a, b) => (b.date + b.startTime).localeCompare(a.date + a.startTime))
+    .map(s => ({ ...s, counsellorName: counsellors[s.counsellorEmail]?.name || 'Counsellor' }));
+  res.json({ bookings: list });
+});
+
+// Book a slot — creates Calendar event with Meet link
+app.post('/api/student/book/:slotId', requireStudent, async (req, res) => {
+  const id = req.params.slotId;
+  const slots = readSlots();
+  const slot = slots[id];
+  if (!slot) return res.status(404).json({ error: 'Slot not found.' });
+  if (slot.booked) return res.status(409).json({ error: 'This slot has already been booked.' });
+
+  const student = readUsers()[req.session.user.email];
+  if (!student) return res.status(404).json({ error: 'Student profile not found.' });
+  if (!student.approved) return res.status(403).json({ error: 'Your account must be approved before booking sessions.' });
+
+  const counsellor = readCounsellors()[slot.counsellorEmail];
+  if (!counsellor) return res.status(404).json({ error: 'Counsellor not found.' });
+
+  try {
+    const calendar = await getCalendarForCounsellor(slot.counsellorEmail);
+    const startISO = `${slot.date}T${slot.startTime}:00`;
+    const endISO   = `${slot.date}T${slot.endTime}:00`;
+
+    const event = await calendar.events.insert({
+      calendarId: 'primary',
+      conferenceDataVersion: 1,
+      sendUpdates: 'all',
+      requestBody: {
+        summary: `EduMitra Counselling: ${student.name || student.email}`,
+        description: `Counselling session booked via EduMitra.\n\nCounsellor: ${counsellor.name}\nStudent: ${student.name || student.email}\nTopic: ${slot.label || 'General Counselling'}`,
+        start: { dateTime: startISO, timeZone: 'Asia/Kolkata' },
+        end:   { dateTime: endISO,   timeZone: 'Asia/Kolkata' },
+        attendees: [{ email: student.email }, { email: slot.counsellorEmail }],
+        conferenceData: {
+          createRequest: {
+            requestId: `edumitra-${slot.id}-${Date.now()}`,
+            conferenceSolutionKey: { type: 'hangoutsMeet' }
+          }
+        }
+      }
+    });
+
+    const meetLink = event.data.hangoutLink
+      || event.data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri
+      || null;
+
+    slot.booked = true;
+    slot.bookedBy = student.email;
+    slot.bookedAt = Date.now();
+    slot.googleEventId = event.data.id;
+    slot.meetLink = meetLink;
+    writeSlots(slots);
+
+    const emailHtml = bookingEmailHtml({
+      studentName: student.name || student.email,
+      counsellorName: counsellor.name,
+      date: slot.date, startTime: slot.startTime, endTime: slot.endTime,
+      label: slot.label, meetLink
+    });
+    sendEmail({ to: student.email,        subject: 'Your EduMitra session is booked', html: emailHtml });
+    sendEmail({ to: slot.counsellorEmail, subject: `New session booked by ${student.name || student.email}`, html: emailHtml });
+
+    res.json({ ok: true, meetLink, slot });
+  } catch (err) {
+    console.error('Booking error:', err);
+    res.status(500).json({ error: 'Could not create Google Meet event: ' + (err.message || 'unknown error') });
+  }
+});
+
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

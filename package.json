@@ -1,28 +1,36 @@
-{
-  "name": "admin",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "type": "commonjs",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.5.2",
-    "express-session": "^1.19.0",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.23.0",
-    "mysql2": "^3.14.0",
-    "nodemailer": "^9.0.1"
-  },
-  "devDependencies": {
-    "nodemon": "^1.19.4"
-  }
+﻿{
+    "name":  "admin",
+    "version":  "1.0.0",
+    "main":  "index.js",
+    "scripts":  {
+                    "test":  "echo \"Error: no test specified\" \u0026\u0026 exit 1",
+                    "start":  "node server.js"
+                },
+    "keywords":  [
+
+                 ],
+    "author":  "",
+    "license":  "ISC",
+    "description":  "",
+    "type":  "commonjs",
+    "dependencies":  {
+                         "bcryptjs":  "^3.0.3",
+                         "cors":  "^2.8.6",
+                         "dotenv":  "^17.3.1",
+                         "express":  "^5.2.1",
+                         "express-rate-limit":  "^8.5.2",
+                         "express-session":  "^1.19.0",
+                         "googleapis":  "^173.0.0",
+                         "jsonwebtoken":  "^9.0.3",
+                         "mongoose":  "^8.23.0",
+                         "mysql2":  "^3.14.0",
+                         "node-cron":  "^4.5.0",
+                         "nodemailer":  "^9.0.1"
+                     },
+    "devDependencies":  {
+                            "nodemon":  "^1.19.4"
+                        },
+    "engines":  {
+                    "node":  "\u003e=20.0.0"
+                }
 }
