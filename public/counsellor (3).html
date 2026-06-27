@@ -379,10 +379,17 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
     My Profile
   </a>
 
+  <a class="nav-item" onclick="doLogout()" style="margin-top:4px;color:rgba(255,100,100,.75);">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Log Out
+  </a>
+
   <div class="sidebar-profile">
-    <div class="sidebar-avatar">PR</div>
+    <div class="sidebar-avatar" style="background:transparent;overflow:hidden;padding:0;">
+      <img id="sidebar-photo" src="https://ui-avatars.com/api/?name=Revin+Shah&background=c9a84c&color=0a1628&size=36&font-size=0.40&bold=true" alt="Revin Shah" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+    </div>
     <div>
-      <div class="sidebar-name">Priya Ramesh</div>
+      <div class="sidebar-name">Revin Shah</div>
       <div class="sidebar-role">Senior Counsellor</div>
       <div class="verified-badge">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -403,6 +410,10 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Log Session Minutes
     </button>
+    <button class="topbar-btn btn-primary" onclick="openScheduleMeet(null)" style="background:#1a73e8;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+      Schedule Meet
+    </button>
     <button class="topbar-btn btn-outline" id="cal-connect-btn-top" onclick="connectGoogleCalendar()" style="display:none">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
       Connect Google Calendar
@@ -415,7 +426,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
     <div class="page active" id="page-overview">
       <div class="section-header">
         <div>
-          <div class="section-title">Good morning, Priya 👋</div>
+          <div class="section-title">Good morning, Revin 👋</div>
           <div class="section-sub">Here's your workspace at a glance for today.</div>
         </div>
       </div>
@@ -460,7 +471,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
           </div>
           <span class="pill pill-upcoming">Upcoming</span>
           <div class="session-actions">
-            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+            <button class="action-btn action-join" onclick="joinSession('arjun.kapoor@student.com','Session #2')">Join</button>
           </div>
         </div>
         <div class="session-card">
@@ -474,7 +485,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
           </div>
           <span class="pill pill-upcoming">Upcoming</span>
           <div class="session-actions">
-            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+            <button class="action-btn action-join" onclick="joinSession('nisha.singh@student.com','Session #1')">Join</button>
           </div>
         </div>
       </div>
@@ -559,7 +570,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
           </div>
           <span class="pill pill-upcoming">Upcoming</span>
           <div class="session-actions">
-            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+            <button class="action-btn action-join" onclick="joinSession('arjun.kapoor@student.com','Session #2')">Join</button>
           </div>
         </div>
         <div class="session-card">
@@ -571,7 +582,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
           </div>
           <span class="pill pill-upcoming">Upcoming</span>
           <div class="session-actions">
-            <button class="action-btn action-join" onclick="window.open('https://meet.google.com/','_blank')">Join</button>
+            <button class="action-btn action-join" onclick="joinSession('nisha.singh@student.com','Session #1')">Join</button>
           </div>
         </div>
         <div class="session-card">
@@ -678,7 +689,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
         </div>
         <div class="request-actions">
           <button class="topbar-btn btn-outline" style="font-size:12px;padding:7px 14px">Decline</button>
-          <button class="topbar-btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="window.open('https://meet.google.com/','_blank')">Accept &amp; Schedule</button>
+          <button class="topbar-btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="acceptAndSchedule('riya.gupta@student.com')">Accept &amp; Schedule</button>
         </div>
       </div>
 
@@ -698,7 +709,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
         </div>
         <div class="request-actions">
           <button class="topbar-btn btn-outline" style="font-size:12px;padding:7px 14px">Decline</button>
-          <button class="topbar-btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="window.open('https://meet.google.com/','_blank')">Accept &amp; Schedule</button>
+          <button class="topbar-btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="acceptAndSchedule('karan.patel@student.com')">Accept &amp; Schedule</button>
         </div>
       </div>
     </div>
@@ -884,7 +895,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
           <h3>Recent Student Feedback</h3>
           <div style="display:flex;flex-direction:column;gap:14px">
             <div style="background:var(--sand);border-radius:8px;padding:14px">
-              <div style="font-size:13px;color:var(--navy);line-height:1.5">"Priya's SOP guidance was incredibly detailed. Got into my first choice university!"</div>
+              <div style="font-size:13px;color:var(--navy);line-height:1.5">"Revin's SOP guidance was incredibly detailed. Got into my first choice university!"</div>
               <div style="font-size:11px;color:var(--muted);margin-top:6px">— Vikram K. · ⭐⭐⭐⭐⭐ · Jun 10</div>
             </div>
             <div style="background:var(--sand);border-radius:8px;padding:14px">
@@ -976,9 +987,17 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
 
       <div class="profile-card">
         <div class="profile-top">
-          <div class="profile-avatar-lg">PR</div>
+          <div class="profile-avatar-lg" style="background:transparent;overflow:hidden;padding:0;border:3px solid var(--gold);">
+            <img id="profile-photo" src="https://ui-avatars.com/api/?name=Revin+Shah&background=c9a84c&color=0a1628&size=72&font-size=0.35&bold=true" alt="Revin Shah" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+          </div>
           <div>
-            <div class="profile-name">Priya Ramesh</div>
+            <div class="profile-name">Revin Shah</div>
+            <div style="margin-top:6px;">
+              <label for="photo-upload" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--sand);border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;">
+                📷 Change Photo
+              </label>
+              <input type="file" id="photo-upload" accept="image/*" style="display:none;" onchange="updateProfilePhoto(event)">
+            </div>
             <div class="profile-sub">Senior Counsellor · Study Abroad & Career Transitions</div>
             <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
               <span class="pill pill-done">Verified</span>
@@ -990,11 +1009,11 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
         <div class="profile-grid">
           <div class="form-field">
             <label>Full Name</label>
-            <input type="text" value="Priya Ramesh">
+            <input type="text" value="Revin Shah">
           </div>
           <div class="form-field">
             <label>Email</label>
-            <input type="email" value="priya.ramesh@edumitra.co">
+            <input type="email" value="revin.shah@edumitra.co">
           </div>
           <div class="form-field">
             <label>Phone</label>
@@ -1010,7 +1029,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
           </div>
           <div class="form-field">
             <label>LinkedIn</label>
-            <input type="url" value="https://linkedin.com/in/priya-ramesh">
+            <input type="url" value="https://linkedin.com/in/revin-shah">
           </div>
         </div>
         <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
@@ -1152,8 +1171,174 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
   </div>
 </div>
 
+<!-- ── Schedule Google Meet Modal ── -->
+<div class="modal-overlay" id="schedule-meet-modal">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-head">
+      <h2 style="display:flex;align-items:center;gap:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" fill="#1a73e8"/><path d="M15 12l6-4v8l-6-4z" fill="#34a853"/></svg>
+        Schedule Google Meet
+      </h2>
+      <button class="modal-close" onclick="closeScheduleMeet()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+      <div id="meet-step-1">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:#1d4ed8;line-height:1.5;">
+          📧 A Google Meet link will be generated and automatically emailed to the student once you confirm.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div class="form-field">
+            <label>Student</label>
+            <select id="meet-student" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;">
+              <option value="arjun.kapoor@student.com">Arjun Kapoor</option>
+              <option value="nisha.singh@student.com">Nisha Singh</option>
+              <option value="sneha.patil@student.com">Sneha Patil</option>
+              <option value="meera.iyer@student.com">Meera Iyer</option>
+              <option value="rohan.mehta@student.com">Rohan Mehta</option>
+              <option value="riya.gupta@student.com">Riya Gupta</option>
+              <option value="karan.patel@student.com">Karan Patel</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Session Type</label>
+            <select id="meet-type" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;">
+              <option>Study Abroad</option>
+              <option>Job Transition</option>
+              <option>Placement Prep</option>
+              <option>MBA Counselling</option>
+              <option>Follow-up</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Date</label>
+            <input type="date" id="meet-date" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;">
+          </div>
+          <div class="form-field">
+            <label>Time</label>
+            <input type="time" id="meet-time" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;" value="10:00">
+          </div>
+          <div class="form-field">
+            <label>Duration</label>
+            <select id="meet-duration" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;">
+              <option value="30">30 minutes</option>
+              <option value="45">45 minutes</option>
+              <option value="60" selected>60 minutes</option>
+              <option value="90">90 minutes</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Session #</label>
+            <select id="meet-session-num" style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;">
+              <option>Session #1</option>
+              <option>Session #2</option>
+              <option>Session #3</option>
+              <option>Session #4</option>
+              <option>Session #5</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:20px;">
+          <label>Agenda / Note to Student (optional)</label>
+          <textarea id="meet-agenda" rows="3" placeholder="e.g. We'll review your SOP draft and finalize your university list." style="width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;resize:vertical;"></textarea>
+        </div>
+        <div id="meet-alert" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button class="topbar-btn btn-outline" onclick="closeScheduleMeet()">Cancel</button>
+          <button class="topbar-btn btn-gold" onclick="generateMeetLink()" id="meet-generate-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+            Generate Meet Link & Send Email
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Confirmation -->
+      <div id="meet-step-2" style="display:none;">
+        <div style="text-align:center;padding:16px 0 24px;">
+          <div style="width:56px;height:56px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px;">✅</div>
+          <div style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:6px;">Meeting Scheduled!</div>
+          <div style="font-size:13px;color:var(--muted);">Google Meet link created and email sent to student.</div>
+        </div>
+        <div style="background:var(--sand);border-radius:10px;padding:16px 18px;margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px;">Meeting Details</div>
+          <div id="meet-summary" style="font-size:13px;color:var(--navy);line-height:1.8;"></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;">Google Meet Link</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <a id="meet-link-display" href="#" target="_blank" style="font-size:13px;color:#2563eb;font-weight:600;word-break:break-all;text-decoration:underline;"></a>
+              <button onclick="copyMeetLink()" style="padding:4px 10px;border-radius:6px;border:1.5px solid var(--border);background:#fff;color:var(--navy);font-size:11px;font-weight:700;cursor:pointer;">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;margin-bottom:20px;">
+          <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:6px;">📧 Email Sent to Student</div>
+          <div id="meet-email-preview" style="font-size:12px;color:#1e40af;line-height:1.6;"></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button class="topbar-btn btn-outline" onclick="closeScheduleMeet()">Done</button>
+          <button class="topbar-btn btn-primary" onclick="scheduleAnother()">Schedule Another</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast Notification ── -->
+<div id="toast" style="
+  position:fixed;bottom:28px;right:28px;z-index:9999;
+  background:var(--navy);color:#fff;padding:13px 18px;
+  border-radius:10px;font-size:13px;font-weight:600;
+  display:none;align-items:center;gap:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+  max-width:340px;line-height:1.4;
+  animation:slideUp .25s ease;
+"></div>
+<style>
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
 
 <script>
+
+// ── Auth guard: redirect to login if not a counsellor ──
+let _counsellorProfile = null;
+let _realStudents = [];
+
+(async function checkCounsellorAuth() {
+  try {
+    const r = await fetch('/api/counsellor/me');
+    const d = await r.json();
+    if (!d.loggedIn) {
+      window.location.replace('/counsellor-login.html');
+      return;
+    }
+    _counsellorProfile = d.user;
+  } catch(e) {
+    console.warn('Could not verify auth:', e);
+  }
+  loadRealStudents();
+})();
+
+async function loadRealStudents() {
+  try {
+    const r = await fetch('/api/counsellor/students');
+    const d = await r.json();
+    _realStudents = d.students || [];
+    populateStudentDropdown(_realStudents);
+  } catch(e) {
+    console.warn('Could not load students:', e);
+  }
+}
+
+function populateStudentDropdown(students) {
+  const sel = document.getElementById('meet-student');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">\u2014 Select student \u2014</option>';
+  students.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.email;
+    opt.textContent = s.name ? s.name + ' (' + s.email + ')' : s.email;
+    sel.appendChild(opt);
+  });
+}
 
 // ── Google Calendar + Slots ──
 function connectGoogleCalendar() {
@@ -1385,6 +1570,199 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // Mobile sidebar
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ── Profile photo upload ──
+function updateProfilePhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const src = e.target.result;
+    const profileImg = document.getElementById('profile-photo');
+    const sidebarImg = document.getElementById('sidebar-photo');
+    if (profileImg) profileImg.src = src;
+    if (sidebarImg) sidebarImg.src = src;
+    showToast('✅ Profile photo updated successfully.');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Toast notification ──
+function showToast(msg, duration = 3500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'flex';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, duration);
+}
+
+// ── Google Meet Scheduling ──
+// Student email map
+const studentEmails = {
+  'arjun.kapoor@student.com': { name: 'Arjun Kapoor', email: 'arjun.kapoor@student.com' },
+  'nisha.singh@student.com':  { name: 'Nisha Singh',  email: 'nisha.singh@student.com' },
+  'sneha.patil@student.com':  { name: 'Sneha Patil',  email: 'sneha.patil@student.com' },
+  'meera.iyer@student.com':   { name: 'Meera Iyer',   email: 'meera.iyer@student.com' },
+  'rohan.mehta@student.com':  { name: 'Rohan Mehta',  email: 'rohan.mehta@student.com' },
+  'riya.gupta@student.com':   { name: 'Riya Gupta',   email: 'riya.gupta@student.com' },
+  'karan.patel@student.com':  { name: 'Karan Patel',  email: 'karan.patel@student.com' },
+};
+
+// Persistent meet links per session (simulated; in prod these come from Google Calendar API)
+const sessionMeetLinks = {};
+
+function generateMeetCode() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  const seg = (n) => Array.from({length:n}, () => chars[Math.floor(Math.random()*26)]).join('');
+  return `${seg(3)}-${seg(4)}-${seg(3)}`;
+}
+
+function openScheduleMeet(studentKey) {
+  const modal = document.getElementById('schedule-meet-modal');
+  document.getElementById('meet-step-1').style.display = 'block';
+  document.getElementById('meet-step-2').style.display = 'none';
+  document.getElementById('meet-alert').style.display = 'none';
+  // Pre-select student if provided
+  if (studentKey) {
+    const sel = document.getElementById('meet-student');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === studentKey) { sel.selectedIndex = i; break; }
+    }
+  }
+  // Default date to tomorrow
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('meet-date').value = tomorrow.toISOString().split('T')[0];
+  document.getElementById('meet-agenda').value = '';
+  modal.classList.add('open');
+}
+
+function closeScheduleMeet() {
+  document.getElementById('schedule-meet-modal').classList.remove('open');
+}
+
+function scheduleAnother() {
+  document.getElementById('meet-step-1').style.display = 'block';
+  document.getElementById('meet-step-2').style.display = 'none';
+  document.getElementById('meet-alert').style.display = 'none';
+  document.getElementById('meet-agenda').value = '';
+}
+
+async function generateMeetLink() {
+  const studentVal  = document.getElementById('meet-student').value;
+  const meetDate    = document.getElementById('meet-date').value;
+  const meetTime    = document.getElementById('meet-time').value;
+  const duration    = document.getElementById('meet-duration').value;
+  const sessionNum  = document.getElementById('meet-session-num').value;
+  const sessionType = document.getElementById('meet-type').value;
+  const agenda      = document.getElementById('meet-agenda').value;
+  const alertEl     = document.getElementById('meet-alert');
+  alertEl.style.display = 'none';
+
+  if (!studentVal) {
+    alertEl.textContent = 'Please select a student.';
+    alertEl.style.display = 'block'; return;
+  }
+  if (!meetDate || !meetTime) {
+    alertEl.textContent = 'Please fill in the date and time.';
+    alertEl.style.display = 'block'; return;
+  }
+
+  const btn = document.getElementById('meet-generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  try {
+    const res = await fetch('/api/counsellor/schedule-meet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentEmail: studentVal,
+        date: meetDate, time: meetTime,
+        duration: parseInt(duration || 60, 10),
+        sessionNum: sessionNum || '1',
+        sessionType: sessionType || 'General Counselling',
+        agenda
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alertEl.textContent = data.error || 'Could not create Meet link. Ensure Google Calendar is connected.';
+      alertEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Generate Meet Link & Send Email';
+      return;
+    }
+
+    const meetLink = data.meetLink;
+    const student = _realStudents.find(s => s.email === studentVal) || { name: studentVal, email: studentVal };
+    const dateObj = new Date(meetDate + 'T' + meetTime);
+    const dateStr = dateObj.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const timeStr = dateObj.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+    const sessionKey = studentVal + '-' + sessionNum;
+    sessionMeetLinks[sessionKey] = meetLink;
+
+    document.getElementById('meet-summary').innerHTML =
+      '<span style="color:var(--muted)">Student:</span> <strong>' + (student.name || student.email) + '</strong> (' + student.email + ')<br>' +
+      '<span style="color:var(--muted)">Session:</span> <strong>#' + sessionNum + ' \u2014 ' + sessionType + '</strong><br>' +
+      '<span style="color:var(--muted)">When:</span> <strong>' + dateStr + ' at ' + timeStr + '</strong><br>' +
+      '<span style="color:var(--muted)">Duration:</span> <strong>' + duration + ' minutes</strong>' +
+      (agenda ? '<br><span style="color:var(--muted)">Agenda:</span> ' + agenda : '');
+
+    const linkEl = document.getElementById('meet-link-display');
+    if (linkEl && meetLink) { linkEl.href = meetLink; linkEl.textContent = meetLink; }
+
+    const counsellorName = (_counsellorProfile && _counsellorProfile.name) || 'Your Counsellor';
+    document.getElementById('meet-email-preview').innerHTML =
+      '<strong>To:</strong> ' + student.email + '<br>' +
+      '<strong>Subject:</strong> Your EduMitra Session Confirmed \u2014 ' + dateStr + '<br><br>' +
+      'Hi ' + (student.name || student.email).split(' ')[0] + ',<br><br>' +
+      'Your session with <strong>' + counsellorName + '</strong> is confirmed.<br>' +
+      (meetLink ? 'Join here: <strong>' + meetLink + '</strong><br>' : '') +
+      (agenda ? 'Agenda: ' + agenda + '<br>' : '') +
+      '<br>See you then! \u2014 EduMitra Team';
+
+    btn.disabled = false; btn.textContent = 'Generate Meet Link & Send Email';
+    document.getElementById('meet-step-1').style.display = 'none';
+    document.getElementById('meet-step-2').style.display = 'block';
+    showToast('Meet link created and email sent to ' + (student.name || student.email));
+
+  } catch(e) {
+    alertEl.textContent = 'Network error. Could not reach server.';
+    alertEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Generate Meet Link & Send Email';
+  }
+}
+
+function copyMeetLink() {
+  const link = document.getElementById('meet-link-display').textContent;
+  navigator.clipboard.writeText(link).then(() => showToast('✅ Meet link copied to clipboard!'));
+}
+
+// ── Override "Join" buttons to use stored meet links ──
+// In production, these links come from your DB. For now, open Google Meet directly.
+function joinSession(studentKey, sessionNum) {
+  const key = `${studentKey}-${sessionNum}`;
+  const link = sessionMeetLinks[key] || null;
+  if (link) {
+    window.open(link, '_blank');
+  } else {
+    // No link scheduled yet — open scheduling modal
+    openScheduleMeet(studentKey);
+    showToast('⚠️ No Meet link yet. Schedule one and send it to the student first.');
+  }
+}
+
+// ── "Accept & Schedule" in request inbox ──
+function acceptAndSchedule(studentKey) {
+  openScheduleMeet(studentKey);
+}
+
+async function doLogout() {
+  try {
+    await fetch('/api/logout', { method: 'POST' });
+  } catch(e) {}
+  window.location.href = '/login.html';
 }
 </script>
 </body>

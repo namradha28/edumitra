@@ -327,24 +327,6 @@
   td .btn-reject { background: #fff; color: #c0392b; border: 1px solid #f1c2bc; }
   td .btn-reject:hover { background: #fee2e2; }
 
-  /* Status tabs */
-  .status-tab {
-    background: none; border: none; padding: 10px 16px;
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    color: #6b7280; cursor: pointer; position: relative;
-    border-bottom: 2px solid transparent; margin-bottom: -1px;
-    transition: color .15s, border-color .15s;
-  }
-  .status-tab:hover { color: #0a1628; }
-  .status-tab.active { color: #0a1628; border-bottom-color: #0a1628; }
-  .tab-count {
-    display: inline-flex; align-items: center; justify-content: center;
-    background: #eef0f5; color: #4a5562;
-    font-size: 11px; font-weight: 700; min-width: 22px;
-    padding: 1px 7px; border-radius: 99px; margin-left: 6px;
-  }
-  .status-tab.active .tab-count { background: #0a1628; color: #faf7f2; }
-
   /* Coming soon */
   .coming-soon {
     background: linear-gradient(135deg, #faf7f2 0%, #fff8ec 100%);
@@ -676,14 +658,6 @@
         <div class="panel">
           <h3>Registered Students</h3>
           <div class="panel-sub">Approve newly signed-up students so they can access their dashboard.</div>
-
-          <div class="status-tabs" style="display:flex;gap:4px;border-bottom:1px solid #eaedf5;margin-bottom:14px;">
-            <button class="status-tab active" data-filter="pending"  onclick="setStudentFilter('pending', this)">Pending <span class="tab-count" id="tabCountPending">0</span></button>
-            <button class="status-tab"        data-filter="approved" onclick="setStudentFilter('approved', this)">Approved <span class="tab-count" id="tabCountApproved">0</span></button>
-            <button class="status-tab"        data-filter="rejected" onclick="setStudentFilter('rejected', this)">Rejected <span class="tab-count" id="tabCountRejected">0</span></button>
-            <button class="status-tab"        data-filter="all"      onclick="setStudentFilter('all', this)">All <span class="tab-count" id="tabCountAll">0</span></button>
-          </div>
-
           <table id="studentsTable">
             <thead>
               <tr>
@@ -876,75 +850,6 @@ async function loadOverview() {
   } catch (e) { console.error(e); }
 }
 
-let _studentsCache = [];
-let _studentFilter = 'pending';
-
-function setStudentFilter(filter, el) {
-  _studentFilter = filter;
-  document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
-  if (el) el.classList.add('active');
-  renderStudents();
-}
-
-function studentStatus(s) {
-  if (s.approved) return 'approved';
-  if (s.verifyData && s.verifyData.verificationStatus === 'rejected') return 'rejected';
-  return 'pending';
-}
-
-function renderStudents() {
-  const tbody = document.getElementById('studentsTbody');
-  // Update counts
-  let pending = 0, approved = 0, rejected = 0;
-  _studentsCache.forEach(s => {
-    const st = studentStatus(s);
-    if (st === 'approved') approved++;
-    else if (st === 'rejected') rejected++;
-    else pending++;
-  });
-  document.getElementById('tabCountPending').textContent  = pending;
-  document.getElementById('tabCountApproved').textContent = approved;
-  document.getElementById('tabCountRejected').textContent = rejected;
-  document.getElementById('tabCountAll').textContent      = _studentsCache.length;
-
-  // Apply filter
-  const filtered = _studentFilter === 'all'
-    ? _studentsCache
-    : _studentsCache.filter(s => studentStatus(s) === _studentFilter);
-
-  if (!filtered.length) {
-    const labels = {
-      pending:  'No pending students. New signups will appear here.',
-      approved: 'No approved students yet.',
-      rejected: 'No rejected students.',
-      all:      'No students registered yet.'
-    };
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">' + labels[_studentFilter] + '</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = filtered.map(s => {
-    const status = studentStatus(s);
-    const provider = s.provider === 'google' ? 'Google' :
-                     s.provider === 'linkedin' ? 'LinkedIn' :
-                     s.provider === 'password' ? 'Email' : '—';
-    const regDate = s.registeredAt ? new Date(s.registeredAt).toLocaleDateString() : '—';
-    return `<tr>
-      <td>${escapeHtml(s.name || '—')}</td>
-      <td>${escapeHtml(s.email)}</td>
-      <td>${provider}</td>
-      <td><span class="status ${status}">${status}</span></td>
-      <td>${regDate}</td>
-      <td style="text-align:right;">
-        <div class="row-actions" style="justify-content:flex-end;">
-          ${status !== 'approved' ? `<button class="btn-row btn-approve" onclick="approveStudent('${escapeAttr(s.email)}')">Approve</button>` : ''}
-          ${status !== 'rejected' ? `<button class="btn-row btn-reject" onclick="rejectStudent('${escapeAttr(s.email)}')">Reject</button>` : ''}
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
 async function loadStudents() {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
@@ -955,62 +860,40 @@ async function loadStudents() {
       return;
     }
     const data = await res.json();
-    _studentsCache = data.students || [];
-    renderStudents();
+    const list = data.students || [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">No students registered yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(s => {
+      const status = s.approved ? 'approved' :
+        (s.verifyData && s.verifyData.verificationStatus === 'rejected') ? 'rejected' : 'pending';
+      const provider = s.provider === 'google' ? 'Google' :
+                       s.provider === 'linkedin' ? 'LinkedIn' :
+                       s.provider === 'password' ? 'Email' : '—';
+      const regDate = s.registeredAt ? new Date(s.registeredAt).toLocaleDateString() : '—';
+      return `<tr>
+        <td>${escapeHtml(s.name || '—')}</td>
+        <td>${escapeHtml(s.email)}</td>
+        <td>${provider}</td>
+        <td><span class="status ${status}">${status}</span></td>
+        <td>${regDate}</td>
+        <td style="text-align:right;">
+          <div class="row-actions" style="justify-content:flex-end;">
+            ${status !== 'approved' ? `<button class="btn-row btn-approve" onclick="approveStudent('${escapeAttr(s.email)}')">Approve</button>` : ''}
+            ${status !== 'rejected' ? `<button class="btn-row btn-reject" onclick="rejectStudent('${escapeAttr(s.email)}')">Reject</button>` : ''}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
   } catch (e) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#991b1b;padding:24px;">Network error.</td></tr>';
   }
 }
 
 async function approveStudent(email) {
-  let counsellorOptions = '<option value="">No assignment yet</option>';
   try {
-    const cr = await fetch('/api/superadmin/counsellors');
-    if (cr.ok) {
-      const cd = await cr.json();
-      (cd.counsellors || []).forEach(c => {
-        counsellorOptions += '<option value="' + escapeHtml(c.email) + '">' + escapeHtml(c.name) + ' (' + escapeHtml(c.email) + ')</option>';
-      });
-    }
-  } catch(e) {}
-
-  const existing = document.getElementById('_approveModal');
-  if (existing) existing.remove();
-
-  const modal = document.createElement('div');
-  modal.id = '_approveModal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
-
-  const box = document.createElement('div');
-  box.style.cssText = 'background:#fff;border-radius:14px;padding:32px;width:90%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.3);';
-  box.innerHTML =
-    '<h2 style="font-size:20px;color:#0a1628;margin:0 0 6px;">Approve Student</h2>' +
-    '<p style="font-size:13px;color:#6b7280;margin:0 0 20px;">Assign a counsellor to this student.</p>' +
-    '<label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;margin-bottom:6px;">Assign Counsellor</label>' +
-    '<select id="_approveCounsellorSel" style="width:100%;padding:10px 13px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:20px;">' + counsellorOptions + '</select>' +
-    '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button id="_approveCancelBtn" style="padding:10px 18px;border:1.5px solid #e5e7eb;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>' +
-    '<button id="_approveConfirmBtn" style="padding:10px 18px;background:#0e7e44;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Approve &amp; Assign</button>' +
-    '</div>';
-
-  modal.appendChild(box);
-  document.body.appendChild(modal);
-
-  document.getElementById('_approveCancelBtn').addEventListener('click', function() { modal.remove(); });
-  document.getElementById('_approveConfirmBtn').addEventListener('click', function() { confirmApprove(email); });
-  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
-}
-
-async function confirmApprove(email) {
-  const sel = document.getElementById('_approveCounsellorSel');
-  const assignedCounsellorEmail = sel ? sel.value : '';
-  document.getElementById('_approveModal').remove();
-  try {
-    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/approve', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ assignedCounsellorEmail: assignedCounsellorEmail || null })
-    });
+    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/approve', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
     loadStudents();
     loadOverview();
   } catch(e) { alert('Failed to approve.'); }

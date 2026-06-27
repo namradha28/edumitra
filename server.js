@@ -166,15 +166,40 @@ function escapeForEmail(str) {
   return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function welcomeEmailHtml(name) {
+function welcomeEmailHtml(name, pendingUrl) {
+  const url = pendingUrl || `${FRONTEND_URL}/pending.html`;
   return `<!DOCTYPE html>
 <html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
   <div style="max-width:520px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
     <h2 style="font-family:'Playfair Display',Georgia,serif;color:#0a1628;margin:0 0 12px;">Welcome to EduMitra</h2>
     <p style="line-height:1.6;font-size:14.5px;">Hi ${escapeForEmail(name || 'there')},</p>
-    <p style="line-height:1.6;font-size:14.5px;">Thank you for signing up. Your registration has been received and our team will review it shortly.</p>
-    <p style="line-height:1.6;font-size:14.5px;">Once approved, you will receive another email and can access your student dashboard.</p>
+    <p style="line-height:1.6;font-size:14.5px;">Thank you for signing up. Your registration has been received and our admin team is currently reviewing it — this usually takes less than 24 hours.</p>
+    <p style="line-height:1.6;font-size:14.5px;">Once approved, you will receive a second email with a direct link to your student dashboard.</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${url}" style="display:inline-block;padding:12px 28px;background:#c8953a;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">Check verification status</a>
+    </p>
+    <p style="line-height:1.6;font-size:13px;color:#6b7280;">Make sure to check your spam folder for future emails from us.</p>
     <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— Team EduMitra</p>
+  </div>
+</body></html>`;
+}
+
+function adminNewSignupEmailHtml(studentName, studentEmail) {
+  const adminUrl = `${FRONTEND_URL}/admin.html`;
+  return `<!DOCTYPE html>
+<html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
+    <h2 style="font-family:'Playfair Display',Georgia,serif;color:#0a1628;margin:0 0 12px;">New student pending approval</h2>
+    <p style="line-height:1.6;font-size:14.5px;">A new student has signed up and is waiting for your approval.</p>
+    <div style="background:#faf7f2;border:1px solid #eaedf5;border-radius:10px;padding:20px;margin:22px 0;">
+      <p style="margin:0 0 6px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;">Student details</p>
+      <p style="margin:6px 0 0;font-size:14.5px;"><strong>Name:</strong> ${escapeForEmail(studentName || '—')}</p>
+      <p style="margin:6px 0 0;font-size:14.5px;"><strong>Email:</strong> ${escapeForEmail(studentEmail)}</p>
+    </div>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${adminUrl}" style="display:inline-block;padding:12px 28px;background:#0a1628;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">Review in Admin Panel →</a>
+    </p>
+    <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— EduMitra System</p>
   </div>
 </body></html>`;
 }
@@ -279,7 +304,14 @@ app.get('/auth/google/callback', async (req, res) => {
       registeredAt: existing ? existing.registeredAt : Date.now()
     });
     req.session.user = { role: 'student', ...publicUser(user) };
-    if (isNew) sendEmail({ to: user.email, subject: 'Welcome to EduMitra', html: welcomeEmailHtml(user.name) });
+    if (isNew) {
+      sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
+      if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
+    }
+    // ── Pending check: redirect to pending page if not approved ──
+    if (!user.approved) {
+      return res.redirect(`${FRONTEND_URL}/pending.html`);
+    }
     res.redirect(`${FRONTEND_URL}/?auth=success`);
   } catch (err) {
     console.error('Google OAuth error:', err);
@@ -327,7 +359,14 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       registeredAt: existing ? existing.registeredAt : Date.now()
     });
     req.session.user = { role: 'student', ...publicUser(user) };
-    if (isNew) sendEmail({ to: user.email, subject: 'Welcome to EduMitra', html: welcomeEmailHtml(user.name) });
+    if (isNew) {
+      sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
+      if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
+    }
+    // ── Pending check: redirect to pending page if not approved ──
+    if (!user.approved) {
+      return res.redirect(`${FRONTEND_URL}/pending.html`);
+    }
     res.redirect(`${FRONTEND_URL}/?auth=success`);
   } catch (err) {
     console.error('LinkedIn OAuth error:', err);
@@ -343,12 +382,17 @@ app.post('/api/auth/signup', signupLimiter, (req, res) => {
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   const key = email.toLowerCase();
   if (readUsers()[key]) return res.status(409).json({ error: 'An account already exists for this email. Please sign in instead.' });
+  const referredBy = (req.body.referredBy || '').toUpperCase().trim() || null;
   const user = upsertUser({
     name, email, passwordHash: hashPassword(password),
-    provider: 'password', approved: false, registeredAt: Date.now()
+    provider: 'password', approved: false, registeredAt: Date.now(),
+    referredBy
   });
   req.session.user = { role: 'student', ...publicUser(user) };
-  sendEmail({ to: user.email, subject: 'Welcome to EduMitra', html: welcomeEmailHtml(user.name) });
+  sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
+  if (SUPERADMIN_EMAIL) {
+    sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
+  }
   res.json({ ok: true, user: req.session.user });
 });
 
@@ -360,6 +404,10 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   if (!user.passwordHash) return res.status(401).json({ error: GENERIC });
   if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: GENERIC });
   req.session.user = { role: 'student', ...publicUser(user) };
+  // ── Pending check: set session but tell frontend to show pending screen ──
+  if (!user.approved) {
+    return res.json({ ok: true, pending: true, user: req.session.user });
+  }
   res.json({ ok: true, user: req.session.user });
 });
 
@@ -417,7 +465,13 @@ app.post('/api/admin/students/:email/approve', requireAdmin, (req, res) => {
   if (!users[key]) return res.status(404).json({ error: 'Student not found.' });
   const wasAlreadyApproved = users[key].approved === true;
   const verifyData = { ...(users[key].verifyData || {}), verificationStatus: 'approved' };
-  const updated = upsertUser({ email: key, approved: true, verifyData, adminNote: req.body?.note || '' });
+  const assignedCounsellorEmail = (req.body?.assignedCounsellorEmail || '').toLowerCase() || null;
+  const updated = upsertUser({
+    email: key, approved: true, verifyData,
+    adminNote: req.body?.note || '',
+    assignedCounsellorEmail,
+    approvedAt: new Date().toISOString()
+  });
   if (!wasAlreadyApproved) {
     sendEmail({
       to: updated.email, subject: 'Your EduMitra account is approved',
@@ -819,6 +873,186 @@ app.post('/api/student/book/:slotId', requireStudent, async (req, res) => {
     console.error('Booking error:', err);
     res.status(500).json({ error: 'Could not create Google Meet event: ' + (err.message || 'unknown error') });
   }
+});
+
+
+/* ════════════════════════ COUNSELLOR — assigned students ════════════════════════ */
+
+// Returns all approved students assigned to the currently logged-in counsellor
+app.get('/api/counsellor/students', requireCounsellor, (req, res) => {
+  const key = req.session.user.email;
+  const students = Object.values(readUsers())
+    .filter(u => u.role === 'student' && u.approved && u.assignedCounsellorEmail === key)
+    .map(publicUser)
+    .sort((a, b) => (b.approvedAt || 0) > (a.approvedAt || 0) ? 1 : -1);
+  res.json({ students });
+});
+
+/* ════════════════════════ COUNSELLOR — schedule meet ════════════════════════ */
+
+// Creates a Google Calendar event with Meet link and emails the student
+app.post('/api/counsellor/schedule-meet', requireCounsellor, async (req, res) => {
+  const { studentEmail, date, time, duration, sessionNum, sessionType, agenda } = req.body || {};
+  if (!studentEmail || !date || !time) {
+    return res.status(400).json({ error: 'studentEmail, date, and time are required.' });
+  }
+
+  const counsellorEmail = req.session.user.email;
+  const counsellors = readCounsellors();
+  const counsellor = counsellors[counsellorEmail];
+  if (!counsellor) return res.status(404).json({ error: 'Counsellor not found.' });
+
+  const student = readUsers()[studentEmail.toLowerCase()];
+  if (!student) return res.status(404).json({ error: 'Student not found.' });
+
+  // Check Google Calendar is connected
+  if (!counsellor.google || !counsellor.google.refreshToken) {
+    return res.status(400).json({ error: 'Please connect your Google Calendar first before scheduling sessions.' });
+  }
+
+  try {
+    const durationMins = parseInt(duration || 60, 10);
+    const startISO = `${date}T${time}:00`;
+    const endDate = new Date(`${date}T${time}:00`);
+    endDate.setMinutes(endDate.getMinutes() + durationMins);
+    const endISO = endDate.toISOString().slice(0, 19);
+
+    const calendar = await getCalendarForCounsellor(counsellorEmail);
+    const event = await calendar.events.insert({
+      calendarId: 'primary',
+      conferenceDataVersion: 1,
+      sendUpdates: 'all',
+      requestBody: {
+        summary: `EduMitra Session #${sessionNum || '?'}: ${student.name || student.email}`,
+        description: `EduMitra counselling session.\n\nCounsellor: ${counsellor.name}\nStudent: ${student.name || student.email}\nType: ${sessionType || 'General Counselling'}\n\n${agenda ? 'Agenda:\n' + agenda : ''}`,
+        start: { dateTime: startISO, timeZone: 'Asia/Kolkata' },
+        end:   { dateTime: endISO,   timeZone: 'Asia/Kolkata' },
+        attendees: [
+          { email: student.email },
+          { email: counsellorEmail }
+        ],
+        conferenceData: {
+          createRequest: {
+            requestId: `edumitra-${Date.now()}`,
+            conferenceSolutionKey: { type: 'hangoutsMeet' }
+          }
+        }
+      }
+    });
+
+    const meetLink = event.data.hangoutLink
+      || event.data.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri
+      || null;
+
+    // Send email to student
+    if (meetLink) {
+      const dateObj = new Date(`${date}T${time}:00`);
+      const dateStr = dateObj.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      const timeStr = dateObj.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      const emailHtml = `<!DOCTYPE html>
+<html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
+    <h2 style="color:#0a1628;margin:0 0 12px;">Your EduMitra Session is Confirmed</h2>
+    <p style="line-height:1.6;font-size:14.5px;">Hi ${student.name || 'there'},</p>
+    <p style="line-height:1.6;font-size:14.5px;">Your counselling session with <strong>${counsellor.name}</strong> has been scheduled.</p>
+    <div style="background:#f0f9ff;border-radius:10px;padding:18px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:14px;">📅 <strong>${dateStr} at ${timeStr}</strong> (${durationMins} min)</p>
+      <p style="margin:0 0 8px;font-size:14px;">📋 <strong>Session #${sessionNum || '?'}</strong> — ${sessionType || 'General Counselling'}</p>
+      ${agenda ? `<p style="margin:0;font-size:14px;">📝 <strong>Agenda:</strong> ${agenda}</p>` : ''}
+    </div>
+    <p style="text-align:center;margin:24px 0;">
+      <a href="${meetLink}" style="display:inline-block;padding:13px 28px;background:#0a1628;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">🎥 Join Google Meet</a>
+    </p>
+    <p style="font-size:13px;color:#6b7280;">Or copy this link: ${meetLink}</p>
+    <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— Team EduMitra</p>
+  </div>
+</body></html>`;
+
+      sendEmail({ to: student.email, subject: `Your EduMitra session is confirmed — ${dateStr}`, html: emailHtml });
+      sendEmail({ to: counsellorEmail, subject: `Session confirmed with ${student.name || student.email}`, html: emailHtml });
+    }
+
+    res.json({ ok: true, meetLink, eventId: event.data.id });
+
+  } catch (err) {
+    console.error('[schedule-meet] error:', err);
+    res.status(500).json({ error: 'Could not create Google Meet event: ' + (err.message || 'unknown error') });
+  }
+});
+
+
+/* ════════════════════════ REFERRALS ════════════════════════ */
+
+// Generate deterministic referral code from email (matches client-side logic)
+function getReferralCode(email) {
+  const local = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4);
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) hash = (hash * 31 + email.charCodeAt(i)) & 0xffff;
+  return 'EDU' + local + String(hash).slice(-3).padStart(3, '0');
+}
+
+// Get student's referral history and earnings
+app.get('/api/student/referrals', requireStudent, (req, res) => {
+  const email = req.session.user.email;
+  const refCode = getReferralCode(email);
+  const users = readUsers();
+  
+  // Find all users who were referred by this student's code
+  const referred = Object.values(users).filter(u => u.referredBy === refCode);
+  const referrals = referred.map(u => {
+    const firstBooking = Object.values(readSlots()).find(s => s.bookedBy === u.email);
+    return {
+      name: u.name || u.email,
+      email: u.email,
+      referredAt: u.registeredAt,
+      status: firstBooking ? 'completed' : (u.approved ? 'signed_up' : 'pending')
+    };
+  });
+
+  const totalEarned = referrals.filter(r => r.status === 'completed').length * 500;
+  res.json({ referralCode: refCode, referrals, totalEarned });
+});
+
+// Apply referral code at signup (called during signup with referredBy field)
+// The signup endpoint already exists — we just need to store the referredBy field
+// when a student signs up. This endpoint validates a code before signup.
+app.get('/api/referral/validate/:code', (req, res) => {
+  const code = (req.params.code || '').toUpperCase().trim();
+  if (!code) return res.status(400).json({ error: 'No code provided.' });
+  
+  // Find which user owns this code
+  const users = readUsers();
+  const owner = Object.values(users).find(u => getReferralCode(u.email) === code);
+  if (!owner) return res.status(404).json({ valid: false, error: 'Invalid referral code.' });
+  
+  // Can't refer yourself
+  if (req.session.user && req.session.user.email === owner.email) {
+    return res.status(400).json({ valid: false, error: 'You cannot use your own referral code.' });
+  }
+  
+  res.json({ valid: true, discount: 250, ownerName: owner.name || 'an EduMitra user' });
+});
+
+
+/* ════════════════════════ ROLE DETECTION ════════════════════════ */
+
+app.post('/api/detect-role', (req, res) => {
+  const email = (req.body?.email || '').toLowerCase().trim();
+  if (!email) return res.status(400).json({ role: 'unknown' });
+
+  // Check superadmin
+  if (SUPERADMIN_EMAIL && email === SUPERADMIN_EMAIL) {
+    return res.json({ role: 'superadmin' });
+  }
+  // Check admin
+  if (readAdmins()[email]) return res.json({ role: 'admin' });
+  // Check counsellor
+  if (readCounsellors()[email]) return res.json({ role: 'counsellor' });
+  // Check student
+  if (readUsers()[email]) return res.json({ role: 'student' });
+
+  return res.json({ role: 'unknown' });
 });
 
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
