@@ -60,12 +60,17 @@
 .ci-icon i      { font-size: 18px; }
 .db-journey-circle i { font-size: 13px; line-height: 1; }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  max-width: 100%;
+}
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--cream);
   color: var(--ink);
   overflow-x: hidden;
+  max-width: 100%;
   cursor: none;
 }
 
@@ -328,6 +333,8 @@ nav ul a:hover { opacity: 1; }
 .band {
   background: var(--ink); padding: 16px 0; overflow: hidden;
   position: relative;
+  width: 100%;
+  max-width: 100vw;
 }
 .band::before, .band::after {
   content: ''; position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2;
@@ -868,7 +875,7 @@ footer {
 /* ── NAV ── */
 @media (max-width: 768px) {
   nav {
-    padding: 0 20px;
+    padding: 0 16px;
     height: 60px;
   }
   nav ul {
@@ -889,14 +896,16 @@ footer {
     font-size: 15px;
     border-bottom: 1px solid var(--mist);
   }
-  .nav-signup { padding: 9px 16px; font-size: 10px; }
+  .nav-auth { gap: 6px; }
+  .nav-login { padding: 7px 12px; font-size: 9.5px; }
+  .nav-signup { padding: 8px 12px; font-size: 9.5px; letter-spacing: .08em; }
   .nav-hamburger {
     display: flex !important;
     flex-direction: column;
     gap: 5px;
     cursor: pointer;
     padding: 8px;
-    margin-right: 8px;
+    margin-right: 4px;
   }
   .nav-hamburger span {
     display: block;
@@ -905,6 +914,10 @@ footer {
     border-radius: 2px;
     transition: all .3s;
   }
+}
+@media (max-width: 380px) {
+  .nav-login { display: none; }
+  .nav-signup { padding: 8px 14px; font-size: 10px; }
 }
 @media (min-width: 769px) {
   .nav-hamburger { display: none !important; }
@@ -918,14 +931,17 @@ footer {
   .hero-h1 { font-size: clamp(36px, 7vw, 56px); }
 }
 @media (max-width: 768px) {
-  .hero-left { padding: 48px 24px 40px; }
+  .hero-left { padding: 48px 24px 120px; }
   .hero-sub { font-size: 15px; margin-bottom: 36px; }
-  .hero-actions { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .hero-actions { flex-direction: column; align-items: stretch; gap: 16px; }
   .btn-fill { width: 100%; justify-content: center; padding: 15px 28px; }
+  .hero-trust { gap: 16px; }
 }
 @media (max-width: 480px) {
-  .hero-left { padding: 40px 18px 32px; }
+  .hero-left { padding: 40px 18px 120px; }
   .hero-h1 { font-size: clamp(30px, 9vw, 44px); }
+  .hero-trust { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .trust-item { font-size: 10px; }
 }
 
 /* ── ABOUT / STATS ── */
@@ -1054,11 +1070,17 @@ footer {
 
 /* ── FLOATING CTA ── */
 @media (max-width: 480px) {
-  .floating-cta { 
-    width: calc(100% - 32px);
+  .floating-cta {
+    max-width: calc(100vw - 32px);
+    width: auto;
     bottom: 16px;
+    padding: 12px 20px;
+    font-size: 11px;
     text-align: center;
     justify-content: center;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
   }
 }
 
@@ -1067,6 +1089,31 @@ footer {
   .section-tag { font-size: 9px; letter-spacing: .12em; }
   img { max-width: 100%; height: auto; }
   * { -webkit-tap-highlight-color: transparent; }
+
+  /* Prevent any element from causing horizontal scroll */
+  section, footer, nav, .band, .hero, .about,
+  .services, .story, .team, .how, .who,
+  .testimonials, .cta-sec, .booking {
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+
+  /* About section fix - was display:grid not flex */
+  .about { display: flex; flex-direction: column; }
+
+  /* Services pill wrap */
+  .pills { gap: 8px; }
+  .pill { font-size: 12px; padding: 9px 16px; }
+
+  /* Who section stack */
+  .who { grid-template-columns: 1fr; gap: 40px; padding: 70px 24px; }
+
+  /* CTA section */
+  .cta-sec h2 { font-size: clamp(32px, 8vw, 56px); }
+
+  /* Sec headings */
+  .sec-split { flex-direction: column; gap: 12px; }
+  .sec-desc { text-align: left; max-width: 100%; }
 }
 
 /* ── CURSOR: hide on touch devices ── */
