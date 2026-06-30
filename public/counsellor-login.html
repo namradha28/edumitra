@@ -143,6 +143,7 @@ label{
 }
 .alert.show{display:block}
 .alert.error{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.alert.success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
 
 .btn-login{
   width:100%;padding:14px;
@@ -242,7 +243,7 @@ label{
       </button>
     </div>
 
-    <a class="forgot" href="#">Forgot password?</a>
+    <a class="forgot" href="#" onclick="event.preventDefault(); doForgotPassword();">Forgot password?</a>
 
     <button class="btn-login" id="login-btn" onclick="doLogin()">
       <div class="spinner" id="spinner"></div>
@@ -344,6 +345,29 @@ function showAlert(msg) {
   const el = document.getElementById('alert');
   el.className    = 'alert error show';
   el.textContent  = msg;
+}
+
+function showAlertSuccess(msg) {
+  const el = document.getElementById('alert');
+  el.className    = 'alert success show';
+  el.textContent  = msg;
+}
+
+async function doForgotPassword() {
+  const email = (document.getElementById('email').value || '').trim() || prompt('Enter your counsellor email address:');
+  if (!email) return;
+  if (!/\S+@\S+\.\S+/.test(email)) { showAlert('Please enter a valid email address first.'); return; }
+  try {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    showAlertSuccess(data.message || 'If an account exists for that email, a reset link has been sent.');
+  } catch (e) {
+    showAlert('Could not reach the server. Please try again.');
+  }
 }
 
 // Check if already logged in as counsellor

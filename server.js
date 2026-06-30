@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
@@ -15,12 +16,27 @@ const FRONTEND_URL = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
 const SUPERADMIN_EMAIL    = (process.env.SUPERADMIN_EMAIL || '').toLowerCase();
 const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || '';
 
+// Required when running behind a reverse proxy (Railway, Render, etc.) so
+// express-session can correctly set "secure" cookies over HTTPS.
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(session({
+  store: new FileStore({
+    path: path.join(__dirname, 'data', 'sessions'),
+    ttl: 7 * 24 * 60 * 60,           // 7 days, matches cookie maxAge below
+    retries: 0,
+    logFn: function () {}             // silence noisy file-store logging
+  }),
   secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax' }
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days — was unset before, so every cookie died with the browser session
+    secure: process.env.NODE_ENV === 'production'
+  }
 }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -75,6 +91,7 @@ const USERS_FILE       = path.join(__dirname, 'data', 'users.json');
 const ADMINS_FILE      = path.join(__dirname, 'data', 'admins.json');
 const COUNSELLORS_FILE = path.join(__dirname, 'data', 'counsellors.json');
 const SLOTS_FILE       = path.join(__dirname, 'data', 'slots.json');
+const RESET_TOKENS_FILE = path.join(__dirname, 'data', 'reset-tokens.json');
 
 function readJSON(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
@@ -92,6 +109,22 @@ const readCounsellors  = () => readJSON(COUNSELLORS_FILE);
 const writeCounsellors = (c) => writeJSON(COUNSELLORS_FILE, c);
 const readSlots        = () => readJSON(SLOTS_FILE);
 const writeSlots       = (s) => writeJSON(SLOTS_FILE, s);
+const readResetTokens  = () => readJSON(RESET_TOKENS_FILE);
+const writeResetTokens = (t) => writeJSON(RESET_TOKENS_FILE, t);
+
+// Finds an account by email across all three "JSON-file databases".
+// Superadmin is intentionally excluded — that login is env-var based,
+// not a stored record, so it can't be reset through this flow.
+function findAccountByEmail(email) {
+  const key = (email || '').toLowerCase();
+  const users = readUsers();
+  if (users[key] && users[key].passwordHash) return { role: 'student', key, read: readUsers, write: writeUsers };
+  const admins = readAdmins();
+  if (admins[key]) return { role: 'admin', key, read: readAdmins, write: writeAdmins };
+  const counsellors = readCounsellors();
+  if (counsellors[key]) return { role: 'counsellor', key, read: readCounsellors, write: writeCounsellors };
+  return null;
+}
 
 function upsertUser(profile) {
   const users = readUsers();
@@ -262,6 +295,23 @@ function bookingEmailHtml({ studentName, counsellorName, date, startTime, endTim
 </body></html>`;
 }
 
+function resetPasswordEmailHtml(name, resetUrl) {
+  return `<!DOCTYPE html>
+<html><body style="font-family:Inter,Arial,sans-serif;color:#0a1628;background:#faf7f2;padding:40px 20px;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;padding:36px;border-radius:12px;border:1px solid #eaedf5;">
+    <h2 style="font-family:'Playfair Display',Georgia,serif;color:#0a1628;margin:0 0 12px;">Reset your password</h2>
+    <p style="line-height:1.6;font-size:14.5px;">Hi ${escapeForEmail(name || 'there')},</p>
+    <p style="line-height:1.6;font-size:14.5px;">We received a request to reset your EduMitra password. Click the button below to set a new one. This link expires in 1 hour.</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${resetUrl}" style="display:inline-block;padding:13px 32px;background:#0a1628;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">Reset password</a>
+    </p>
+    <p style="line-height:1.6;font-size:13px;color:#6b7280;">If the button does not work, paste this into your browser:<br><a href="${resetUrl}" style="color:#c8953a;word-break:break-all;">${resetUrl}</a></p>
+    <p style="line-height:1.6;font-size:13px;color:#6b7280;">If you did not request this, you can safely ignore this email — your password will not be changed.</p>
+    <p style="line-height:1.6;font-size:14.5px;margin-top:24px;">— Team EduMitra</p>
+  </div>
+</body></html>`;
+}
+
 /* ════════════════════════ GOOGLE LOGIN OAUTH (existing) ════════════════════════ */
 
 app.get('/auth/google', (req, res) => {
@@ -307,10 +357,6 @@ app.get('/auth/google/callback', async (req, res) => {
     if (isNew) {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
-    }
-    // ── Pending check: redirect to pending page if not approved ──
-    if (!user.approved) {
-      return res.redirect(`${FRONTEND_URL}/pending.html`);
     }
     res.redirect(`${FRONTEND_URL}/?auth=success`);
   } catch (err) {
@@ -363,10 +409,6 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
-    // ── Pending check: redirect to pending page if not approved ──
-    if (!user.approved) {
-      return res.redirect(`${FRONTEND_URL}/pending.html`);
-    }
     res.redirect(`${FRONTEND_URL}/?auth=success`);
   } catch (err) {
     console.error('LinkedIn OAuth error:', err);
@@ -404,10 +446,6 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   if (!user.passwordHash) return res.status(401).json({ error: GENERIC });
   if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: GENERIC });
   req.session.user = { role: 'student', ...publicUser(user) };
-  // ── Pending check: set session but tell frontend to show pending screen ──
-  if (!user.approved) {
-    return res.json({ ok: true, pending: true, user: req.session.user });
-  }
   res.json({ ok: true, user: req.session.user });
 });
 
@@ -418,6 +456,76 @@ app.post('/api/auth/verify', (req, res) => {
   req.session.user = { role: 'student', ...publicUser(user) };
   res.json({ ok: true, user: req.session.user });
 });
+
+app.post('/api/auth/forgot-password', loginLimiter, async (req, res) => {
+  const { email } = req.body || {};
+  const key = (email || '').toLowerCase();
+  // Always respond the same way whether or not the account exists, so this
+  // endpoint can't be used to check which emails are registered.
+  const GENERIC_OK = { ok: true, message: 'If an account exists for that email, a reset link has been sent.' };
+  if (!key || !/\S+@\S+\.\S+/.test(key)) return res.json(GENERIC_OK);
+
+  const account = findAccountByEmail(key);
+  if (!account) return res.json(GENERIC_OK);
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const tokens = readResetTokens();
+  // Clear out any old tokens for this email before issuing a new one.
+  for (const t of Object.keys(tokens)) {
+    if (tokens[t].email === key) delete tokens[t];
+  }
+  tokens[tokenHash] = {
+    email: key,
+    role: account.role,
+    expires: Date.now() + 60 * 60 * 1000 // 1 hour
+  };
+  writeResetTokens(tokens);
+
+  const resetUrl = `${FRONTEND_URL}/reset-password.html?token=${rawToken}`;
+  const record = account.read()[key];
+  sendEmail({
+    to: key,
+    subject: 'Reset your EduMitra password',
+    html: resetPasswordEmailHtml(record.name, resetUrl)
+  });
+
+  res.json(GENERIC_OK);
+});
+
+app.post('/api/auth/reset-password', (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token) return res.status(400).json({ error: 'Invalid or missing reset token.' });
+  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const tokens = readResetTokens();
+  const entry = tokens[tokenHash];
+  if (!entry) return res.status(400).json({ error: 'This reset link is invalid. Please request a new one.' });
+  if (entry.expires < Date.now()) {
+    delete tokens[tokenHash];
+    writeResetTokens(tokens);
+    return res.status(400).json({ error: 'This reset link has expired. Please request a new one.' });
+  }
+
+  const store = account_store_for(entry.role);
+  const records = store.read();
+  if (!records[entry.email]) return res.status(400).json({ error: 'Account no longer exists.' });
+  records[entry.email].passwordHash = hashPassword(password);
+  records[entry.email].passwordChangedAt = Date.now();
+  store.write(records);
+
+  delete tokens[tokenHash];
+  writeResetTokens(tokens);
+
+  res.json({ ok: true });
+});
+
+function account_store_for(role) {
+  if (role === 'admin') return { read: readAdmins, write: writeAdmins };
+  if (role === 'counsellor') return { read: readCounsellors, write: writeCounsellors };
+  return { read: readUsers, write: writeUsers };
+}
 
 app.get('/api/me', (req, res) => {
   if (req.session.user) return res.json({ loggedIn: true, user: req.session.user });
@@ -1032,27 +1140,6 @@ app.get('/api/referral/validate/:code', (req, res) => {
   }
   
   res.json({ valid: true, discount: 250, ownerName: owner.name || 'an EduMitra user' });
-});
-
-
-/* ════════════════════════ ROLE DETECTION ════════════════════════ */
-
-app.post('/api/detect-role', (req, res) => {
-  const email = (req.body?.email || '').toLowerCase().trim();
-  if (!email) return res.status(400).json({ role: 'unknown' });
-
-  // Check superadmin
-  if (SUPERADMIN_EMAIL && email === SUPERADMIN_EMAIL) {
-    return res.json({ role: 'superadmin' });
-  }
-  // Check admin
-  if (readAdmins()[email]) return res.json({ role: 'admin' });
-  // Check counsellor
-  if (readCounsellors()[email]) return res.json({ role: 'counsellor' });
-  // Check student
-  if (readUsers()[email]) return res.json({ role: 'student' });
-
-  return res.json({ role: 'unknown' });
 });
 
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

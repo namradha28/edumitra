@@ -60,17 +60,12 @@
 .ci-icon i      { font-size: 18px; }
 .db-journey-circle i { font-size: 13px; line-height: 1; }
 
-html {
-  scroll-behavior: smooth;
-  overflow-x: hidden;
-  max-width: 100%;
-}
+html { scroll-behavior: smooth; }
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--cream);
   color: var(--ink);
   overflow-x: hidden;
-  max-width: 100%;
   cursor: none;
 }
 
@@ -333,8 +328,6 @@ nav ul a:hover { opacity: 1; }
 .band {
   background: var(--ink); padding: 16px 0; overflow: hidden;
   position: relative;
-  width: 100%;
-  max-width: 100vw;
 }
 .band::before, .band::after {
   content: ''; position: absolute; top: 0; bottom: 0; width: 80px; z-index: 2;
@@ -875,7 +868,7 @@ footer {
 /* ── NAV ── */
 @media (max-width: 768px) {
   nav {
-    padding: 0 16px;
+    padding: 0 20px;
     height: 60px;
   }
   nav ul {
@@ -896,16 +889,14 @@ footer {
     font-size: 15px;
     border-bottom: 1px solid var(--mist);
   }
-  .nav-auth { gap: 6px; }
-  .nav-login { padding: 7px 12px; font-size: 9.5px; }
-  .nav-signup { padding: 8px 12px; font-size: 9.5px; letter-spacing: .08em; }
+  .nav-signup { padding: 9px 16px; font-size: 10px; }
   .nav-hamburger {
     display: flex !important;
     flex-direction: column;
     gap: 5px;
     cursor: pointer;
     padding: 8px;
-    margin-right: 4px;
+    margin-right: 8px;
   }
   .nav-hamburger span {
     display: block;
@@ -914,10 +905,6 @@ footer {
     border-radius: 2px;
     transition: all .3s;
   }
-}
-@media (max-width: 380px) {
-  .nav-login { display: none; }
-  .nav-signup { padding: 8px 14px; font-size: 10px; }
 }
 @media (min-width: 769px) {
   .nav-hamburger { display: none !important; }
@@ -931,17 +918,14 @@ footer {
   .hero-h1 { font-size: clamp(36px, 7vw, 56px); }
 }
 @media (max-width: 768px) {
-  .hero-left { padding: 48px 24px 120px; }
+  .hero-left { padding: 48px 24px 40px; }
   .hero-sub { font-size: 15px; margin-bottom: 36px; }
-  .hero-actions { flex-direction: column; align-items: stretch; gap: 16px; }
+  .hero-actions { flex-direction: column; align-items: flex-start; gap: 16px; }
   .btn-fill { width: 100%; justify-content: center; padding: 15px 28px; }
-  .hero-trust { gap: 16px; }
 }
 @media (max-width: 480px) {
-  .hero-left { padding: 40px 18px 120px; }
+  .hero-left { padding: 40px 18px 32px; }
   .hero-h1 { font-size: clamp(30px, 9vw, 44px); }
-  .hero-trust { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .trust-item { font-size: 10px; }
 }
 
 /* ── ABOUT / STATS ── */
@@ -1031,11 +1015,9 @@ footer {
 
 /* ── BOOKING FORM ── */
 @media (max-width: 768px) {
-  .booking { grid-template-columns: 1fr; padding: 60px 24px; }
+  .booking { padding: 60px 24px; }
   .booking-grid { grid-template-columns: 1fr; gap: 32px; }
   .f-row { grid-template-columns: 1fr; }
-  .bk-left { min-height: auto; padding: 48px 24px; }
-  .bk-right { padding: 40px 24px; }
 }
 @media (max-width: 480px) {
   .booking { padding: 48px 18px; }
@@ -1074,17 +1056,11 @@ footer {
 
 /* ── FLOATING CTA ── */
 @media (max-width: 480px) {
-  .floating-cta {
-    max-width: calc(100vw - 32px);
-    width: auto;
+  .floating-cta { 
+    width: calc(100% - 32px);
     bottom: 16px;
-    padding: 12px 20px;
-    font-size: 11px;
     text-align: center;
     justify-content: center;
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
   }
 }
 
@@ -1093,39 +1069,9 @@ footer {
   .section-tag { font-size: 9px; letter-spacing: .12em; }
   img { max-width: 100%; height: auto; }
   * { -webkit-tap-highlight-color: transparent; }
-
-  /* Prevent any element from causing horizontal scroll */
-  section, footer, nav, .band, .hero, .about,
-  .services, .story, .team, .how, .who,
-  .testimonials, .cta-sec, .booking {
-    max-width: 100vw;
-    box-sizing: border-box;
-  }
-
-  /* About section fix - was display:grid not flex */
-  .about { display: flex; flex-direction: column; }
-
-  /* Services pill wrap */
-  .pills { gap: 8px; }
-  .pill { font-size: 12px; padding: 9px 16px; }
-
-  /* Who section stack */
-  .who { grid-template-columns: 1fr; gap: 40px; padding: 70px 24px; }
-
-  /* CTA section */
-  .cta-sec h2 { font-size: clamp(32px, 8vw, 56px); }
-
-  /* Sec headings */
-  .sec-split { flex-direction: column; gap: 12px; }
-  .sec-desc { text-align: left; max-width: 100%; }
 }
 
-/* ── CURSOR: hide on touch devices ── */
-@media (hover: none) and (pointer: coarse) {
-  body { cursor: auto !important; }
-  .c-dot, .c-ring { display: none !important; }
-  select, button, input, textarea, a { cursor: pointer !important; }
-}</style>
+</style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
@@ -1154,7 +1100,7 @@ footer {
 </nav>
 
 <!-- FLOATING BOOK CONSULTATION CTA -->
-<a href="#" onclick="event.preventDefault(); showModal('signupModal')" class="floating-cta" id="floatingCta">
+<a href="#book" class="floating-cta" id="floatingCta">
   <span class="fc-icon">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
   </span>
@@ -1175,7 +1121,7 @@ footer {
       Expert guidance for every stage — from stream selection and university applications to career transitions and visa support. Your Mitra for life.
     </p>
     <div class="hero-actions">
-      <a href="#" onclick="event.preventDefault(); showModal('signupModal')" class="btn-fill">Book Free Consultation →</a>
+      <a href="#book" class="btn-fill">Book Free Consultation →</a>
       <a href="#about" class="btn-line">Learn More ↓</a>
     </div>
     <div class="hero-trust">
@@ -1620,42 +1566,19 @@ footer {
 </footer>
 
 <script>
-// ── CURSOR (hidden on touch/mobile devices)
+// ── CURSOR
 const dot  = document.getElementById('cDot');
 const ring = document.getElementById('cRing');
-const isTouchDevice = () => window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-
-if (isTouchDevice()) {
-  // Hide custom cursor on touch devices; restore default cursor
-  dot.style.display = 'none';
-  ring.style.display = 'none';
-  document.body.style.cursor = '';
-} else {
-  let mx = window.innerWidth / 2, my = window.innerHeight / 2;
-  let rx = mx, ry = my;
-  let hasMoved = false;
-
-  // Keep dots off-screen until first real mouse move
-  dot.style.opacity = '0';
-  ring.style.opacity = '0';
-
-  document.addEventListener('mousemove', e => {
-    mx = e.clientX; my = e.clientY;
-    dot.style.transform = `translate(${mx - 4}px,${my - 4}px)`;
-    if (!hasMoved) {
-      rx = mx; ry = my;
-      dot.style.opacity = '1';
-      ring.style.opacity = '1';
-      hasMoved = true;
-    }
-  });
-
-  (function loop(){
-    rx += (mx - rx) * .12; ry += (my - ry) * .12;
-    ring.style.transform = `translate(${rx - 20}px,${ry - 20}px)`;
-    requestAnimationFrame(loop);
-  })();
-}
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => {
+  mx=e.clientX; my=e.clientY;
+  dot.style.transform=`translate(${mx-4}px,${my-4}px)`;
+});
+(function loop(){
+  rx+=(mx-rx)*.12; ry+=(my-ry)*.12;
+  ring.style.transform=`translate(${rx-20}px,${ry-20}px)`;
+  requestAnimationFrame(loop);
+})();
 
 // ── SCROLL REVEAL
 const obs = new IntersectionObserver(es=>{
@@ -1979,10 +1902,9 @@ function showPendingScreen() {
     }
   }
 
-  const hide = (id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
-  hide('mainSite');
-  hide('dashboard');
-  hide('verifyScreen');
+  document.getElementById('mainSite').style.display      = 'none';
+  document.getElementById('dashboard').style.display     = 'none';
+  document.getElementById('verifyScreen').style.display  = 'none';
   document.getElementById('pendingScreen').style.display = 'flex';
   document.body.style.overflow = '';
 
@@ -1992,7 +1914,7 @@ function showPendingScreen() {
 }
 
 function showDashboard() {
-  (document.getElementById('mainSite')||{style:{}}).style.display = 'none';
+  document.getElementById('mainSite').style.display = 'none';
   document.getElementById('pendingScreen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.body.style.overflow = '';
@@ -2041,8 +1963,8 @@ function logOut() {
   document.getElementById('dashboard').style.display    = 'none';
   document.getElementById('adminPortal').style.display  = 'none';
   document.getElementById('pendingScreen').style.display = 'none';
-  (document.getElementById('verifyScreen')||{style:{}}).style.display = 'none';
-  (document.getElementById('mainSite')||{style:{}}).style.display = 'block';
+  document.getElementById('verifyScreen').style.display  = 'none';
+  document.getElementById('mainSite').style.display     = 'block';
   // Clear login form for next use
   ['loginEmail','loginPass','suName','suEmail','suPass'].forEach(id => {
     const el = document.getElementById(id);
@@ -2067,10 +1989,10 @@ function demoApproveUser() {
 let _apDrawerEmail = null;
 
 function showAdminPortal() {
-  (document.getElementById('mainSite')||{style:{}}).style.display = 'none';
+  document.getElementById('mainSite').style.display      = 'none';
   document.getElementById('dashboard').style.display     = 'none';
   document.getElementById('pendingScreen').style.display = 'none';
-  (document.getElementById('verifyScreen')||{style:{}}).style.display = 'none';
+  document.getElementById('verifyScreen').style.display  = 'none';
   document.getElementById('adminPortal').style.display   = 'block';
   document.body.style.overflow = '';
 
@@ -2345,7 +2267,7 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 let _vfStep = 'A'; // 'A' = personal, 'B' = study goals
 
 function showVerifyScreen() {
-  (document.getElementById('mainSite')||{style:{}}).style.display = 'none';
+  document.getElementById('mainSite').style.display     = 'none';
   document.getElementById('dashboard').style.display    = 'none';
   document.getElementById('pendingScreen').style.display = 'none';
   const vs = document.getElementById('verifyScreen');
@@ -2449,7 +2371,7 @@ function vfNext() {
     _currentUser.verifyData = verifyData;
 
     // Show pending screen
-    (document.getElementById('verifyScreen')||{style:{}}).style.display = 'none';
+    document.getElementById('verifyScreen').style.display = 'none';
     showPendingScreen();
   }
 }
@@ -2954,7 +2876,7 @@ function showOK(){
   <div class="auth-split">
     <div class="auth-panel-left">
       <div>
-        <div class="apl-logo"><img src="assets/logo-white.png" alt="EduMitra" style="height:54px;width:auto;display:block;"></div>
+        <div class="apl-logo"><img src="assets/img-017.png" alt="EduMitra" style="height:54px;width:auto;display:block;filter:brightness(0)invert(1);"></div>
         <div class="apl-tagline">Your Study Abroad Partner</div>
         <div class="apl-headline">Your dream university<br>is <span>closer than</span><br>you think.</div>
         <div class="apl-desc">EduMitra has helped over 4,200 students secure admissions in top universities across UK, Canada, Australia, and Europe.</div>
@@ -3000,7 +2922,7 @@ function showOK(){
           <div id="loginPassErr" class="auth-error-msg">Password must be at least 6 characters.</div>
         </div>
         <div style="display:flex;justify-content:flex-end;margin:-8px 0 20px;">
-          <a style="font-size:12.5px;color:#c8953a;font-weight:600;cursor:pointer;">Forgot password?</a>
+          <a style="font-size:12.5px;color:#c8953a;font-weight:600;cursor:pointer;" onclick="doForgotPassword()">Forgot password?</a>
         </div>
         <button class="auth-submit" onclick="doLogin()"><span>Sign In →</span></button>
         <div class="auth-terms">By signing in you agree to EduMitra's <a>Terms of Service</a> and <a>Privacy Policy</a>.</div>
@@ -3018,7 +2940,7 @@ function showOK(){
   <div class="auth-split">
     <div class="auth-panel-left">
       <div>
-        <div class="apl-logo"><img src="assets/logo-white.png" alt="EduMitra" style="height:54px;width:auto;display:block;"></div>
+        <div class="apl-logo"><img src="assets/img-017.png" alt="EduMitra" style="height:54px;width:auto;display:block;filter:brightness(0)invert(1);"></div>
         <div class="apl-tagline">Your Study Abroad Partner</div>
         <div class="apl-headline">Start your journey<br>to a <span>world-class</span><br>education.</div>
         <div class="apl-desc">Join thousands of students who achieved their dream of studying abroad with EduMitra's expert guidance.</div>
@@ -3490,7 +3412,7 @@ function showOK(){
   <!-- Header -->
   <header class="db-header">
     <div class="db-header-left">
-      <div class="db-logo"><img src="assets/logo-white.png" alt="EduMitra" style="height:38px;width:auto;display:block;"></div>
+      <div class="db-logo"><img src="assets/img-017.png" alt="EduMitra" style="height:38px;width:auto;display:block;filter:brightness(0)invert(1);"></div>
       <div class="db-divider"></div>
       <div class="db-breadcrumb">Student Portal &rsaquo; <span id="dbBreadcrumb">Dashboard</span></div>
     </div>
@@ -4409,7 +4331,7 @@ function showOK(){
 <!-- Header -->
 <header class="ap-header">
   <div class="ap-header-left">
-    <div class="ap-logo"><img src="assets/logo-white.png" alt="EduMitra" style="height:34px;width:auto;display:block;"></div>
+    <div class="ap-logo"><img src="assets/img-017.png" alt="EduMitra" style="height:34px;width:auto;display:block;filter:brightness(0)invert(1);"></div>
     <span class="ap-badge">Admin Portal</span>
   </div>
   <div class="ap-header-right">
@@ -5248,43 +5170,22 @@ window.addEventListener('DOMContentLoaded', function () {
     }
 
     try {
-      // Step 1: detect role first
-      let detectedRole = 'student';
-      try {
-        const roleRes = await fetch('/api/detect-role', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        const roleData = await roleRes.json();
-        detectedRole = roleData.role || 'student';
-      } catch(e) {}
-
-      // Step 2: pick the right endpoint
-      let endpoint = '/api/auth/login';
-      if (detectedRole === 'admin' || detectedRole === 'superadmin') endpoint = '/api/admin/login';
-      else if (detectedRole === 'counsellor') endpoint = '/api/counsellor/login';
-
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: pass })
       });
       const data = await res.json();
-
       if (!res.ok) {
-        showAuthAlert('loginAlert', 'error', '❌ ' + (data.error || 'Login failed.'));
+        showAuthAlert('loginAlert', 'error', '❌ ' + (data.error || 'Login failed.') +
+          '<br><span style="font-size:12px;color:#6b7280;">Counsellor? Visit <a href="/counsellor-login.html" style="color:#0a1628;text-decoration:underline;">counsellor login</a>. Admin? Visit <a href="/admin.html" style="color:#0a1628;text-decoration:underline;">admin login</a>.</span>');
         document.getElementById('loginPass').classList.add('input-error');
         return;
       }
-
-      // Step 3: redirect based on role
-      if (detectedRole === 'admin' || detectedRole === 'superadmin') {
-        window.location.href = '/admin.html';
-      } else if (detectedRole === 'counsellor') {
-        window.location.href = '/counsellor.html';
-      } else if (data.pending) {
-        // Student pending approval
+      // Approved → real dashboard. Not approved → stay here, show pending screen.
+      if (data.user.approved) {
+        window.location.href = '/dashboard.html';
+      } else {
         showAuthAlert('loginAlert', 'info',
           '⏳ Your account is <strong>pending approval</strong>. Our team will activate it shortly.');
         _currentUser = { email: data.user.email, name: data.user.name, approved: false };
@@ -5292,10 +5193,28 @@ window.addEventListener('DOMContentLoaded', function () {
           hideModal('loginModal');
           showPendingScreen();
         }, 1500);
-      } else {
-        // Approved student
-        window.location.href = '/dashboard.html';
       }
+    } catch (e) {
+      showAuthAlert('loginAlert', 'error', '❌ Could not reach the server. Please try again.');
+    }
+  };
+
+  // 2b. Forgot password — prompts for email, hits the real backend
+  window.doForgotPassword = async function () {
+    const email = (document.getElementById('loginEmail').value || '').trim() || prompt('Enter the email address for your account:');
+    if (!email) return;
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      showAuthAlert('loginAlert', 'error', '⚠️ Please enter a valid email address first.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      showAuthAlert('loginAlert', 'success', '✅ ' + (data.message || 'If an account exists for that email, a reset link has been sent.'));
     } catch (e) {
       showAuthAlert('loginAlert', 'error', '❌ Could not reach the server. Please try again.');
     }
