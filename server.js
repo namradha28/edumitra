@@ -449,6 +449,49 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   res.json({ ok: true, user: req.session.user });
 });
 
+// Single unified login — detects role (superadmin → admin → counsellor →
+// student, in that fixed order) by email, so the homepage doesn't need to
+// know in advance which kind of account is signing in. If the same email
+// happens to exist in more than one store, the first match in this order
+// wins silently — by design (see conversation), not a bug.
+app.post('/api/login', loginLimiter, (req, res) => {
+  const { email, password } = req.body || {};
+  const key = (email || '').toLowerCase();
+  const GENERIC = 'Invalid email or password.';
+  if (!key || !password) return res.status(401).json({ error: GENERIC });
+
+  if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
+    if (password === SUPERADMIN_PASSWORD) {
+      req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
+      return res.json({ ok: true, user: req.session.user });
+    }
+    return res.status(401).json({ error: GENERIC });
+  }
+
+  const admin = readAdmins()[key];
+  if (admin) {
+    if (!verifyPassword(password, admin.passwordHash)) return res.status(401).json({ error: GENERIC });
+    req.session.user = { role: 'admin', email: key, name: admin.name };
+    return res.json({ ok: true, user: req.session.user });
+  }
+
+  const counsellor = readCounsellors()[key];
+  if (counsellor) {
+    if (!verifyPassword(password, counsellor.passwordHash)) return res.status(401).json({ error: GENERIC });
+    req.session.user = { role: 'counsellor', email: key, name: counsellor.name };
+    return res.json({ ok: true, user: req.session.user });
+  }
+
+  const user = readUsers()[key];
+  if (user && user.passwordHash) {
+    if (!verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: GENERIC });
+    req.session.user = { role: 'student', ...publicUser(user) };
+    return res.json({ ok: true, user: req.session.user });
+  }
+
+  return res.status(401).json({ error: GENERIC });
+});
+
 app.post('/api/auth/verify', (req, res) => {
   if (!req.session.user || req.session.user.role !== 'student') return res.status(401).json({ error: 'Please sign in first.' });
   const verifyData = { ...req.body, submittedAt: Date.now(), verificationStatus: 'pending' };

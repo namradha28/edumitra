@@ -5170,20 +5170,24 @@ window.addEventListener('DOMContentLoaded', function () {
     }
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: pass })
       });
       const data = await res.json();
       if (!res.ok) {
-        showAuthAlert('loginAlert', 'error', '❌ ' + (data.error || 'Login failed.') +
-          '<br><span style="font-size:12px;color:#6b7280;">Counsellor? Visit <a href="/counsellor-login.html" style="color:#0a1628;text-decoration:underline;">counsellor login</a>. Admin? Visit <a href="/admin.html" style="color:#0a1628;text-decoration:underline;">admin login</a>.</span>');
+        showAuthAlert('loginAlert', 'error', '❌ ' + (data.error || 'Login failed.'));
         document.getElementById('loginPass').classList.add('input-error');
         return;
       }
-      // Approved → real dashboard. Not approved → stay here, show pending screen.
-      if (data.user.approved) {
+      // Single login now routes by whatever role the server says this email is.
+      const role = data.user.role;
+      if (role === 'counsellor') {
+        window.location.href = '/counsellor.html';
+      } else if (role === 'admin' || role === 'superadmin') {
+        window.location.href = '/admin.html';
+      } else if (role === 'student' && data.user.approved) {
         window.location.href = '/dashboard.html';
       } else {
         showAuthAlert('loginAlert', 'info',
