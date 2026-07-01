@@ -502,6 +502,10 @@
     <div class="nav-item" data-view="analytics" onclick="switchView('analytics')">
       <span class="icon">📈</span> <span>Analytics &amp; Reports</span>
     </div>
+    <div class="nav-item" data-view="fee-approvals" onclick="switchView('fee-approvals')">
+      <span class="icon">💰</span> Fee Approvals
+      <span class="badge" id="fee-badge" style="display:none">0</span>
+    </div>
     <div class="nav-item" data-view="settings" onclick="switchView('settings')">
       <span class="icon">⚙️</span> <span>System Settings</span>
     </div>
@@ -723,6 +727,22 @@
       </section>
 
       <!-- ════════ Settings ════════ -->
+      <section class="view" id="view-fee-approvals">
+        <div class="view-header">
+          <h1>Fee Approvals</h1>
+          <div class="sub">Review and approve counsellor session fees before they go live to students.</div>
+        </div>
+        <div class="panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="margin:0;">Pending Fee Requests</h3>
+            <button onclick="loadFeeApprovals()" style="padding:7px 14px;background:#f0f2f7;border:none;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;">↻ Refresh</button>
+          </div>
+          <div id="fee-approvals-container">
+            <div style="text-align:center;color:#6b7280;padding:24px;">Loading…</div>
+          </div>
+        </div>
+      </section>
+
       <section class="view" id="view-settings">
         <div class="view-header">
           <h1>System Settings</h1>
@@ -771,13 +791,14 @@
 let _me = null;
 
 const viewTitles = {
-  overview:    { title: 'Platform Overview',         crumb: 'Operations / Platform Overview' },
-  counsellors: { title: 'Counsellor Management',     crumb: 'Operations / Counsellor Management' },
-  sessions:    { title: 'Session & Request Control', crumb: 'Operations / Session & Request Control' },
-  ratings:     { title: 'Confidential Rating Vault', crumb: 'Operations / Confidential Rating Vault' },
-  users:       { title: 'Users & Services',          crumb: 'Platform / Users & Services' },
-  analytics:   { title: 'Analytics & Reports',       crumb: 'Platform / Analytics & Reports' },
-  settings:    { title: 'System Settings',           crumb: 'Platform / System Settings' }
+  overview:       { title: 'Platform Overview',         crumb: 'Operations / Platform Overview' },
+  counsellors:    { title: 'Counsellor Management',     crumb: 'Operations / Counsellor Management' },
+  sessions:       { title: 'Session & Request Control', crumb: 'Operations / Session & Request Control' },
+  ratings:        { title: 'Confidential Rating Vault', crumb: 'Operations / Confidential Rating Vault' },
+  users:          { title: 'Users & Services',          crumb: 'Platform / Users & Services' },
+  analytics:      { title: 'Analytics & Reports',       crumb: 'Platform / Analytics & Reports' },
+  'fee-approvals':{ title: 'Fee Approvals',             crumb: 'Platform / Fee Approvals' },
+  settings:       { title: 'System Settings',           crumb: 'Platform / System Settings' }
 };
 
 function switchView(name) {
@@ -790,9 +811,10 @@ function switchView(name) {
   document.getElementById('topbarBreadcrumb').textContent = meta.crumb;
 
   // Load data for views that need it
-  if (name === 'users')        loadStudents();
-  if (name === 'analytics')    loadAnalytics();
-  if (name === 'settings')     loadAdmins();
+  if (name === 'users')           loadStudents();
+  if (name === 'analytics')       loadAnalytics();
+  if (name === 'settings')        loadAdmins();
+  if (name === 'fee-approvals')   loadFeeApprovals();
   if (name === 'counsellors')  loadCounsellors();
 }
 
@@ -1213,9 +1235,64 @@ function escapeAttr(str) {
     if (data.loggedIn) {
       _me = data.user;
       enterApp();
+      loadFeeApprovals(); // check for pending fees on load and show badge
     }
   } catch (e) {}
 })();
+
+async function loadFeeApprovals() {
+  const container = document.getElementById('fee-approvals-container');
+  const badge = document.getElementById('fee-badge');
+  try {
+    const r = await fetch('/api/admin/fee-approvals');
+    const d = await r.json();
+    const pending = d.pending || [];
+    if (badge) {
+      badge.textContent = pending.length;
+      badge.style.display = pending.length ? 'inline-block' : 'none';
+    }
+    if (!container) return;
+    if (!pending.length) {
+      container.innerHTML = '<div style="text-align:center;color:#6b7280;padding:24px;">No pending fee requests.</div>';
+      return;
+    }
+    container.innerHTML = pending.map(c => `
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 0;border-bottom:1px solid #f0f2f7;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#0a1628;">${escapeHtml(c.name)}</div>
+          <div style="font-size:12.5px;color:#6b7280;margin-top:2px;">${escapeHtml(c.email)}</div>
+          <div style="font-size:13px;font-weight:600;color:#0a1628;margin-top:4px;">Requested fee: ₹${Number(c.sessionFee).toLocaleString('en-IN')}</div>
+          <div style="font-size:12px;color:#6b7280;">Student pays (incl. 3% + 18% GST): ₹${(c.sessionFee * 1.03 * 1.18).toFixed(2)}</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Submitted: ${c.feeSubmittedAt ? new Date(c.feeSubmittedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="reviewFee('${escapeAttr(c.email)}','approve')" style="padding:8px 16px;background:#0a1628;color:#fff;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;">✓ Approve</button>
+          <button onclick="reviewFee('${escapeAttr(c.email)}','reject')"  style="padding:8px 16px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;">✕ Reject</button>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    if (container) container.innerHTML = '<div style="color:#dc2626;padding:16px;">Could not load fee requests.</div>';
+  }
+}
+
+async function reviewFee(email, action) {
+  try {
+    const r = await fetch('/api/admin/counsellors/' + encodeURIComponent(email) + '/fee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      loadFeeApprovals();
+    } else {
+      alert(d.error || 'Action failed.');
+    }
+  } catch(e) {
+    alert('Network error. Please try again.');
+  }
+}
 </script>
 </body>
 </html>

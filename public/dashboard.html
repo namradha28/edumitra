@@ -265,6 +265,7 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
 .mob-burger span{display:block;width:22px;height:2px;background:var(--navy);border-radius:2px}
 @media(max-width:900px){.mob-burger{display:flex}}
 </style>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
@@ -401,9 +402,9 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
       <div class="section-header">
         <div>
           <div class="section-title">Book a Session</div>
-          <div class="section-sub">Pick an available slot from your counsellor</div>
+          <div class="section-sub">Choose a counsellor and pay to book your session</div>
         </div>
-        <button class="topbar-btn btn-outline" onclick="loadAvailableSlots()">
+        <button class="topbar-btn btn-outline" onclick="loadCounsellors()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-6.5"/></svg>
           Refresh
         </button>
@@ -414,30 +415,27 @@ body{display:flex;min-height:100vh;background:var(--sand);color:var(--text)}
           <div style="font-size:24px">ℹ️</div>
           <div>
             <div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:2px">How booking works</div>
-            <div style="font-size:13px;color:var(--muted)">Select an available slot below. Once booked, a Google Meet link is created and emailed to you and your counsellor. You'll also see it in My Sessions.</div>
+            <div style="font-size:13px;color:var(--muted)">Select a counsellor below and pay securely via Razorpay. Once payment is confirmed, our team will connect with you within 24 working hours to schedule your session.</div>
           </div>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <select id="filter-counsellor" onchange="filterSlots()" style="padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:var(--navy);outline:none">
-          <option value="">All counsellors</option>
-        </select>
-        <select id="filter-date" onchange="filterSlots()" style="padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;color:var(--navy);outline:none">
-          <option value="">Any date</option>
-          <option value="today">Today</option>
-          <option value="week">This week</option>
-          <option value="month">This month</option>
-        </select>
-      </div>
-
-      <div id="slots-container">
+      <div id="counsellors-container">
         <div class="empty">
           <div class="empty-icon">⏳</div>
-          <h3>Loading slots...</h3>
-          <p>Fetching available times from your counsellor</p>
+          <h3>Loading counsellors...</h3>
+          <p>Fetching available counsellors</p>
         </div>
+      </div>
+    </div>
+
+    <!-- ══ PAYMENT SUCCESS POPUP ══ -->
+    <div id="payment-success-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:16px;padding:40px 36px;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+        <div style="width:64px;height:64px;background:#f0fdf4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px;">✅</div>
+        <h2 style="font-size:20px;font-weight:700;color:#0a1628;margin-bottom:12px;">Payment Successful!</h2>
+        <p id="payment-success-msg" style="font-size:14px;color:#6b7280;line-height:1.7;margin-bottom:28px;"></p>
+        <button onclick="closePaymentSuccess()" style="padding:13px 32px;background:#0a1628;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;width:100%;">Explore Dashboard</button>
       </div>
     </div>
 
@@ -728,18 +726,111 @@ function renderSessionCard(b, isUpcoming) {
 }
 
 // ── Available slots ────────────────────────────────
-async function loadAvailableSlots() {
-  const container = document.getElementById('slots-container');
-  container.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><h3>Loading...</h3><p>Fetching available slots</p></div>';
+async function loadCounsellors() {
+  const container = document.getElementById('counsellors-container');
+  container.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><h3>Loading...</h3><p>Fetching available counsellors</p></div>';
   try {
-    const r = await fetch('/api/student/slots');
+    const r = await fetch('/api/students/counsellors');
     const d = await r.json();
-    _allSlots = d.slots || [];
-    buildCounsellorFilter(_allSlots);
-    renderSlots(_allSlots);
+    const list = d.counsellors || [];
+    if (!list.length) {
+      container.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><h3>No counsellors available yet</h3><p>Our team is setting up counsellor profiles. Check back soon.</p></div>';
+      return;
+    }
+    container.innerHTML = list.map(c => `
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="width:52px;height:52px;border-radius:50%;background:#0a1628;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
+            ${c.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#0a1628;">${c.name}</div>
+            <div style="font-size:12px;color:#6b7280;margin-top:3px;">Session fee: <strong>₹${c.sessionFee.toLocaleString('en-IN')}</strong></div>
+            <div style="font-size:12px;color:#6b7280;margin-top:2px;">
+              Platform fee (3%): ₹${(c.sessionFee * 0.03).toFixed(2)} &nbsp;|&nbsp; GST (18%): ₹${(c.sessionFee * 1.03 * 0.18).toFixed(2)}
+            </div>
+            <div style="font-size:13px;font-weight:700;color:#0a1628;margin-top:4px;">Total payable: ₹${c.total.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+          </div>
+        </div>
+        <button onclick="initiatePayment('${c.email}','${c.name}',${c.total})" style="padding:11px 24px;background:#c9a84c;color:#0a1628;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
+          Pay ₹${c.total.toLocaleString('en-IN', {minimumFractionDigits:2})} & Book
+        </button>
+      </div>
+    `).join('');
   } catch(e) {
-    container.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><h3>Could not load slots</h3><p>Please refresh the page.</p></div>';
+    container.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><h3>Could not load counsellors</h3><p>Please refresh the page.</p></div>';
   }
+}
+
+// Keep backward-compat reference so old code that calls loadAvailableSlots doesn't crash
+function loadAvailableSlots() { loadCounsellors(); }
+
+async function initiatePayment(counsellorEmail, counsellorName, totalAmount) {
+  try {
+    // Step 1: create order on backend
+    const r = await fetch('/api/payment/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ counsellorEmail })
+    });
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || 'Could not initiate payment. Please try again.'); return; }
+
+    // Step 2: open Razorpay checkout
+    const options = {
+      key:         data.keyId,
+      amount:      data.amount,
+      currency:    data.currency,
+      name:        'EduMitra',
+      description: `Session with ${data.counsellorName}`,
+      order_id:    data.orderId,
+      prefill: {
+        name:  _currentUser ? _currentUser.name  : '',
+        email: _currentUser ? _currentUser.email : ''
+      },
+      theme: { color: '#0a1628' },
+      handler: async function(response) {
+        // Step 3: verify on backend
+        const vr = await fetch('/api/payment/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id:   response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature:  response.razorpay_signature
+          })
+        });
+        const vd = await vr.json();
+        if (vr.ok && vd.ok) {
+          showPaymentSuccess(data.amountDisplay, counsellorName);
+        } else {
+          alert('Payment could not be verified. Please contact support with your payment ID: ' + response.razorpay_payment_id);
+        }
+      },
+      modal: {
+        ondismiss: function() {
+          // user closed the Razorpay modal without paying — do nothing
+        }
+      }
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  } catch(e) {
+    alert('Something went wrong. Please try again.');
+  }
+}
+
+function showPaymentSuccess(amount, counsellorName) {
+  const formatted = '₹' + parseFloat(amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById('payment-success-msg').innerHTML =
+    `Thank you for the payment of <strong>${formatted}</strong>. We have received your details and will connect with you within 24 working hours.<br><br>Until then, please do explore your dashboard.`;
+  const overlay = document.getElementById('payment-success-overlay');
+  overlay.style.display = 'flex';
+}
+
+function closePaymentSuccess() {
+  document.getElementById('payment-success-overlay').style.display = 'none';
 }
 
 function buildCounsellorFilter(slots) {

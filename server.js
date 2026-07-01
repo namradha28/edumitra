@@ -4,6 +4,7 @@ const session = require('express-session');
 const FileStore = require('session-file-store')(session);
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
+const Razorpay = require('razorpay');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -577,6 +578,159 @@ app.get('/api/me', (req, res) => {
 
 app.post('/api/logout', (req, res) => { req.session.destroy(() => res.json({ ok: true })); });
 app.get('/auth/logout', (req, res) => { req.session.destroy(() => res.redirect(`${FRONTEND_URL}/`)); });
+
+/* ════════════════════════ PAYMENTS (Razorpay) ════════════════════════ */
+
+const razorpay = new Razorpay({
+  key_id:     process.env.RAZORPAY_KEY_ID     || '',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || ''
+});
+
+// Price calculation: base + 3% platform fee + 18% GST on total
+function calcTotal(basePrice) {
+  const base    = parseFloat(basePrice);
+  const withFee = base * 1.03;           // +3% platform fee
+  const withGST = withFee * 1.18;        // +18% GST on (base + fee)
+  return Math.round(withGST * 100) / 100; // round to 2 decimal places
+}
+
+// Counsellor: set/update their session fee (sets status to pending approval)
+app.post('/api/counsellor/fee', (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'counsellor')
+    return res.status(401).json({ error: 'Unauthorised.' });
+  const { fee } = req.body || {};
+  const parsed = parseFloat(fee);
+  if (!parsed || parsed <= 0 || parsed > 100000)
+    return res.status(400).json({ error: 'Invalid fee amount.' });
+  const counsellors = readCounsellors();
+  const key = req.session.user.email.toLowerCase();
+  if (!counsellors[key]) return res.status(404).json({ error: 'Counsellor not found.' });
+  counsellors[key].sessionFee       = parsed;
+  counsellors[key].feeStatus        = 'pending';
+  counsellors[key].feeSubmittedAt   = Date.now();
+  writeCounsellors(counsellors);
+  res.json({ ok: true, fee: parsed, feeStatus: 'pending' });
+});
+
+// Counsellor: get their own fee info
+app.get('/api/counsellor/fee', (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'counsellor')
+    return res.status(401).json({ error: 'Unauthorised.' });
+  const key = req.session.user.email.toLowerCase();
+  const c = readCounsellors()[key];
+  if (!c) return res.status(404).json({ error: 'Not found.' });
+  res.json({ fee: c.sessionFee || null, feeStatus: c.feeStatus || null });
+});
+
+// Admin: list counsellors with pending fee approvals
+app.get('/api/admin/fee-approvals', (req, res) => {
+  if (!req.session.user || !['admin','superadmin'].includes(req.session.user.role))
+    return res.status(401).json({ error: 'Unauthorised.' });
+  const counsellors = readCounsellors();
+  const pending = Object.entries(counsellors)
+    .filter(([, c]) => c.feeStatus === 'pending')
+    .map(([email, c]) => ({
+      email,
+      name:          c.name,
+      sessionFee:    c.sessionFee,
+      feeSubmittedAt: c.feeSubmittedAt
+    }));
+  res.json({ pending });
+});
+
+// Admin: approve or reject a counsellor's fee
+app.post('/api/admin/counsellors/:email/fee', (req, res) => {
+  if (!req.session.user || !['admin','superadmin'].includes(req.session.user.role))
+    return res.status(401).json({ error: 'Unauthorised.' });
+  const { action } = req.body || {};   // 'approve' or 'reject'
+  if (!['approve','reject'].includes(action))
+    return res.status(400).json({ error: 'action must be approve or reject.' });
+  const counsellors = readCounsellors();
+  const key = decodeURIComponent(req.params.email).toLowerCase();
+  if (!counsellors[key]) return res.status(404).json({ error: 'Counsellor not found.' });
+  counsellors[key].feeStatus = action === 'approve' ? 'approved' : 'rejected';
+  counsellors[key].feeReviewedAt = Date.now();
+  writeCounsellors(counsellors);
+  res.json({ ok: true, feeStatus: counsellors[key].feeStatus });
+});
+
+// Students: list all counsellors with an approved fee
+app.get('/api/students/counsellors', (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'student')
+    return res.status(401).json({ error: 'Unauthorised.' });
+  const counsellors = readCounsellors();
+  const list = Object.entries(counsellors)
+    .filter(([, c]) => c.feeStatus === 'approved' && c.sessionFee)
+    .map(([email, c]) => ({
+      email,
+      name:       c.name,
+      sessionFee: c.sessionFee,
+      total:      calcTotal(c.sessionFee)
+    }));
+  res.json({ counsellors: list });
+});
+
+// Create Razorpay order — called just before showing the payment modal to the student
+app.post('/api/payment/create-order', async (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'student')
+    return res.status(401).json({ error: 'Unauthorised.' });
+  const { counsellorEmail } = req.body || {};
+  const c = readCounsellors()[(counsellorEmail || '').toLowerCase()];
+  if (!c || c.feeStatus !== 'approved' || !c.sessionFee)
+    return res.status(400).json({ error: 'Counsellor fee not available.' });
+
+  const totalRupees = calcTotal(c.sessionFee);
+  const amountPaise = Math.round(totalRupees * 100);   // Razorpay uses smallest currency unit
+
+  try {
+    const order = await razorpay.orders.create({
+      amount:   amountPaise,
+      currency: 'INR',
+      receipt:  `rcpt_${Date.now()}`,
+      notes:    {
+        studentEmail:    req.session.user.email,
+        counsellorEmail: counsellorEmail,
+        baseFee:         c.sessionFee,
+        platformFee:     Math.round(c.sessionFee * 0.03 * 100) / 100,
+        gst:             Math.round((c.sessionFee * 1.03 * 0.18) * 100) / 100,
+        totalAmount:     totalRupees
+      }
+    });
+    res.json({
+      ok: true,
+      orderId:         order.id,
+      amount:          amountPaise,
+      amountDisplay:   totalRupees,
+      currency:        'INR',
+      counsellorName:  c.name,
+      counsellorEmail: counsellorEmail,
+      keyId:           process.env.RAZORPAY_KEY_ID
+    });
+  } catch (e) {
+    console.error('[razorpay] create-order error:', e.message);
+    res.status(500).json({ error: 'Could not create payment order. Please try again.' });
+  }
+});
+
+// Verify payment signature after Razorpay checkout completes
+app.post('/api/payment/verify', (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'student')
+    return res.status(401).json({ error: 'Unauthorised.' });
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
+    return res.status(400).json({ error: 'Missing payment details.' });
+
+  const expectedSig = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+
+  if (expectedSig !== razorpay_signature)
+    return res.status(400).json({ error: 'Payment verification failed.' });
+
+  // Signature verified — payment is genuine
+  res.json({ ok: true, paymentId: razorpay_payment_id });
+});
 
 /* ════════════════════════ ADMIN (existing) ════════════════════════ */
 
