@@ -331,7 +331,7 @@ async function doLogin() {
     }
 
     // Success — redirect to counsellor dashboard
-    window.location.href = '/counsellor.html';
+    window.location.href = '/counsellor';
 
   } catch (e) {
     showAlert('Could not reach the server. Please try again.');
@@ -376,7 +376,7 @@ async function doForgotPassword() {
     const r = await fetch('/api/me', { credentials: 'same-origin' });
     const d = await r.json();
     if (d.loggedIn && d.user?.role === 'counsellor') {
-      window.location.href = '/counsellor.html';
+      window.location.href = '/counsellor';
     }
   } catch(_) {}
 })();

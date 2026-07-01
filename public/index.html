@@ -5136,11 +5136,11 @@ function tick(el) {
     if (!d.loggedIn) return;
     const role = d.user.role;
     if (role === 'counsellor') {
-      window.location.replace('/counsellor.html');
+      window.location.replace('/counsellor');
     } else if (role === 'admin' || role === 'superadmin') {
-      window.location.replace('/admin.html');
+      window.location.replace('/admin');
     } else if (role === 'student' && d.user.approved) {
-      window.location.replace('/dashboard.html');
+      window.location.replace('/dashboard');
     }
     // Unapproved student — stay on homepage (the existing pending UI handles it)
   } catch (e) { /* server unreachable, ignore */ }
@@ -5184,11 +5184,11 @@ window.addEventListener('DOMContentLoaded', function () {
       // Single login now routes by whatever role the server says this email is.
       const role = data.user.role;
       if (role === 'counsellor') {
-        window.location.href = '/counsellor.html';
+        window.location.href = '/counsellor';
       } else if (role === 'admin' || role === 'superadmin') {
-        window.location.href = '/admin.html';
+        window.location.href = '/admin';
       } else if (role === 'student' && data.user.approved) {
-        window.location.href = '/dashboard.html';
+        window.location.href = '/dashboard';
       } else {
         showAuthAlert('loginAlert', 'info',
           '⏳ Your account is <strong>pending approval</strong>. Our team will activate it shortly.');

@@ -60,6 +60,14 @@ app.use(session({
 }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+/* ── Clean URL routes (no .html extension) ── */
+const pages = ['dashboard','admin','counsellor','counsellor-login','pending','reset-password','login'];
+pages.forEach(p => {
+  app.get('/' + p, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', p + '.html'));
+  });
+});
+
 /* ════════════════════════ RATE LIMITERS ════════════════════════ */
 
 const loginLimiter = rateLimit({
