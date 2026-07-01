@@ -391,7 +391,8 @@ app.get('/auth/google/callback', async (req, res) => {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
-    req.session.save(() => res.redirect(`${FRONTEND_URL}/?auth=success`));
+    const dest = user.approved ? `${FRONTEND_URL}/dashboard` : `${FRONTEND_URL}/pending`;
+    req.session.save(() => res.redirect(dest));
   } catch (err) {
     console.error('Google OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=google_failed`);
@@ -444,7 +445,8 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
-    req.session.save(() => res.redirect(`${FRONTEND_URL}/?auth=success`));
+    const dest = user.approved ? `${FRONTEND_URL}/dashboard` : `${FRONTEND_URL}/pending`;
+    req.session.save(() => res.redirect(dest));
   } catch (err) {
     console.error('LinkedIn OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=linkedin_failed`);
