@@ -1,6 +1,7 @@
-﻿node_modules/
+node_modules/
 .env
-data/
+data/sessions/
+data/reset-tokens.json
 *.log
 .DS_Store
 *.bak
