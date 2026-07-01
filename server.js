@@ -22,20 +22,39 @@ const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || '';
 app.set('trust proxy', 1);
 
 app.use(express.json());
+// Use FileStore when the filesystem is writable (local dev), fall back to
+// default MemoryStore on platforms with ephemeral filesystems (DigitalOcean
+// App Platform). MemoryStore is fine for production here because sessions are
+// short-lived and the platform restarts are infrequent.
+function buildSessionStore() {
+  try {
+    const sessDir = path.join(__dirname, 'data', 'sessions');
+    if (!fs.existsSync(sessDir)) fs.mkdirSync(sessDir, { recursive: true });
+    // Quick write test
+    const testFile = path.join(sessDir, '.write-test');
+    fs.writeFileSync(testFile, '1');
+    fs.unlinkSync(testFile);
+    return new FileStore({
+      path:    sessDir,
+      ttl:     7 * 24 * 60 * 60,
+      retries: 0,
+      logFn:   function () {}
+    });
+  } catch (e) {
+    console.warn('[session] FileStore unavailable, using MemoryStore:', e.message);
+    return undefined; // express-session defaults to MemoryStore
+  }
+}
+
 app.use(session({
-  store: new FileStore({
-    path: path.join(__dirname, 'data', 'sessions'),
-    ttl: 7 * 24 * 60 * 60,           // 7 days, matches cookie maxAge below
-    retries: 0,
-    logFn: function () {}             // silence noisy file-store logging
-  }),
+  store: buildSessionStore(),
   secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days — was unset before, so every cookie died with the browser session
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     secure: process.env.NODE_ENV === 'production'
   }
 }));
@@ -581,10 +600,17 @@ app.get('/auth/logout', (req, res) => { req.session.destroy(() => res.redirect(`
 
 /* ════════════════════════ PAYMENTS (Razorpay) ════════════════════════ */
 
-const razorpay = new Razorpay({
-  key_id:     process.env.RAZORPAY_KEY_ID     || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || ''
-});
+// Lazily initialised so dotenvx has time to inject env vars before we read them
+let _razorpay = null;
+function getRazorpay() {
+  if (!_razorpay) {
+    _razorpay = new Razorpay({
+      key_id:     process.env.RAZORPAY_KEY_ID     || '',
+      key_secret: process.env.RAZORPAY_KEY_SECRET || ''
+    });
+  }
+  return _razorpay;
+}
 
 // Price calculation: base + 3% platform fee + 18% GST on total
 function calcTotal(basePrice) {
@@ -683,7 +709,7 @@ app.post('/api/payment/create-order', async (req, res) => {
   const amountPaise = Math.round(totalRupees * 100);   // Razorpay uses smallest currency unit
 
   try {
-    const order = await razorpay.orders.create({
+    const order = await getRazorpay().orders.create({
       amount:   amountPaise,
       currency: 'INR',
       receipt:  `rcpt_${Date.now()}`,
@@ -707,7 +733,11 @@ app.post('/api/payment/create-order', async (req, res) => {
       keyId:           process.env.RAZORPAY_KEY_ID
     });
   } catch (e) {
-    console.error('[razorpay] create-order error:', e.message);
+    const errMsg = e && (e.error || e.message || e.description || JSON.stringify(e));
+    console.error('[razorpay] create-order error:', errMsg);
+    console.error('[razorpay] key_id present:', !!process.env.RAZORPAY_KEY_ID);
+    console.error('[razorpay] key_secret present:', !!process.env.RAZORPAY_KEY_SECRET);
+    console.error('[razorpay] full error:', JSON.stringify(e));
     res.status(500).json({ error: 'Could not create payment order. Please try again.' });
   }
 });
