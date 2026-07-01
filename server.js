@@ -483,7 +483,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   if (!user.passwordHash) return res.status(401).json({ error: GENERIC });
   if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: GENERIC });
   req.session.user = { role: 'student', ...publicUser(user) };
-  res.json({ ok: true, user: req.session.user });
+  req.session.save(() => res.json({ ok: true, user: req.session.user }));
 });
 
 // Single unified login — detects role (superadmin → admin → counsellor →
@@ -500,7 +500,7 @@ app.post('/api/login', loginLimiter, (req, res) => {
   if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
     if (password === SUPERADMIN_PASSWORD) {
       req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
-      return res.json({ ok: true, user: req.session.user });
+      return req.session.save(() => res.json({ ok: true, user: req.session.user }));
     }
     return res.status(401).json({ error: GENERIC });
   }
@@ -509,21 +509,21 @@ app.post('/api/login', loginLimiter, (req, res) => {
   if (admin) {
     if (!verifyPassword(password, admin.passwordHash)) return res.status(401).json({ error: GENERIC });
     req.session.user = { role: 'admin', email: key, name: admin.name };
-    return res.json({ ok: true, user: req.session.user });
+    return req.session.save(() => res.json({ ok: true, user: req.session.user }));
   }
 
   const counsellor = readCounsellors()[key];
   if (counsellor) {
     if (!verifyPassword(password, counsellor.passwordHash)) return res.status(401).json({ error: GENERIC });
     req.session.user = { role: 'counsellor', email: key, name: counsellor.name };
-    return res.json({ ok: true, user: req.session.user });
+    return req.session.save(() => res.json({ ok: true, user: req.session.user }));
   }
 
   const user = readUsers()[key];
   if (user && user.passwordHash) {
     if (!verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: GENERIC });
     req.session.user = { role: 'student', ...publicUser(user) };
-    return res.json({ ok: true, user: req.session.user });
+    return req.session.save(() => res.json({ ok: true, user: req.session.user }));
   }
 
   return res.status(401).json({ error: GENERIC });
