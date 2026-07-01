@@ -5,6 +5,7 @@ const FileStore = require('session-file-store')(session);
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const Razorpay = require('razorpay');
+const cookieParse = require('cookie').parse;
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -345,6 +346,8 @@ function resetPasswordEmailHtml(name, resetUrl) {
 app.get('/auth/google', (req, res) => {
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
+  // Also store in cookie as fallback for when session isn't persisted across redirects
+  res.cookie('oauth_state', state, { httpOnly: true, sameSite: 'lax', maxAge: 5 * 60 * 1000 });
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: process.env.GOOGLE_REDIRECT_URI,
@@ -358,9 +361,11 @@ app.get('/auth/google', (req, res) => {
 app.get('/auth/google/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    if (!code || state !== req.session.oauthState) {
+    const expectedState = req.session.oauthState || cookieParse(req.headers.cookie||'').oauth_state;
+    if (!code || state !== expectedState) {
       return res.redirect(`${FRONTEND_URL}/?auth=error&reason=state_mismatch`);
     }
+    res.clearCookie('oauth_state');
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -386,7 +391,7 @@ app.get('/auth/google/callback', async (req, res) => {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
-    res.redirect(`${FRONTEND_URL}/?auth=success`);
+    req.session.save(() => res.redirect(`${FRONTEND_URL}/?auth=success`));
   } catch (err) {
     console.error('Google OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=google_failed`);
@@ -398,6 +403,7 @@ app.get('/auth/google/callback', async (req, res) => {
 app.get('/auth/linkedin', (req, res) => {
   const state = crypto.randomBytes(16).toString('hex');
   req.session.oauthState = state;
+  res.cookie('oauth_state', state, { httpOnly: true, sameSite: 'lax', maxAge: 5 * 60 * 1000 });
   const params = new URLSearchParams({
     client_id: process.env.LINKEDIN_CLIENT_ID, redirect_uri: process.env.LINKEDIN_REDIRECT_URI,
     response_type: 'code', scope: 'openid profile email', state
@@ -408,7 +414,8 @@ app.get('/auth/linkedin', (req, res) => {
 app.get('/auth/linkedin/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    if (!code || state !== req.session.oauthState) {
+    const expectedState = req.session.oauthState || cookieParse(req.headers.cookie||'').oauth_state;
+    if (!code || state !== expectedState) {
       return res.redirect(`${FRONTEND_URL}/?auth=error&reason=state_mismatch`);
     }
     const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
@@ -437,7 +444,7 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
-    res.redirect(`${FRONTEND_URL}/?auth=success`);
+    req.session.save(() => res.redirect(`${FRONTEND_URL}/?auth=success`));
   } catch (err) {
     console.error('LinkedIn OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=linkedin_failed`);
