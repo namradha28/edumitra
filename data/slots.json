@@ -1,0 +1,16 @@
+{
+  "1782125925861": {
+    "id": 1782125925861,
+    "counsellorEmail": "namradhamani28@gmail.com",
+    "date": "2026-06-23",
+    "startTime": "10:00",
+    "endTime": "11:00",
+    "label": "General Counselling",
+    "booked": false,
+    "bookedBy": null,
+    "bookedAt": null,
+    "googleEventId": null,
+    "meetLink": null,
+    "createdAt": 1782125925861
+  }
+}
