@@ -359,19 +359,15 @@ footer {
 // ── Populate user pill from session or URL params ──
 (async function() {
   try {
-    // Try to get user from the API session
-    const res = await fetch('/api/me');
+    const res = await fetch('/api/me', { credentials: 'same-origin' });
     const data = await res.json();
     if (data && data.user) {
       showUserPill(data.user.name, data.user.email);
-      // If somehow already approved, redirect to dashboard
       if (data.loggedIn && data.user.approved) {
-        window.location.replace('/dashboard.html');
+        window.location.replace('/dashboard');
       }
     }
-  } catch (e) {
-    // No session available — that's fine, pill stays hidden
-  }
+  } catch (e) {}
 
   // Also check localStorage as fallback (set by the signup flow)
   const stored = localStorage.getItem('pendingUser');
@@ -397,13 +393,13 @@ function showUserPill(name, email) {
 // ── Poll every 30 s — if admin approved, redirect automatically ──
 setInterval(async function() {
   try {
-    const res  = await fetch('/api/me');
+    const res  = await fetch('/api/me', { credentials: 'same-origin' });
     const data = await res.json();
     if (data.loggedIn && data.user && data.user.approved) {
-      window.location.replace('/dashboard.html');
+      window.location.replace('/dashboard');
     }
   } catch (e) {}
-}, 30000);
+}, 15000);
 </script>
 </body>
 </html>

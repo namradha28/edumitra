@@ -472,7 +472,7 @@ app.post('/api/auth/signup', signupLimiter, (req, res) => {
   if (SUPERADMIN_EMAIL) {
     sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
   }
-  res.json({ ok: true, user: req.session.user });
+  req.session.save(() => res.json({ ok: true, user: req.session.user }));
 });
 
 app.post('/api/auth/login', loginLimiter, (req, res) => {
@@ -788,7 +788,7 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
   if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
     if (password === SUPERADMIN_PASSWORD) {
       req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
-      return res.json({ ok: true, user: req.session.user });
+      return req.session.save(() => res.json({ ok: true, user: req.session.user }));
     }
     return res.status(401).json({ error: GENERIC });
   }
@@ -796,7 +796,7 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
   if (!admin) return res.status(401).json({ error: GENERIC });
   if (!verifyPassword(password || '', admin.passwordHash)) return res.status(401).json({ error: GENERIC });
   req.session.user = { role: 'admin', email: key, name: admin.name };
-  res.json({ ok: true, user: req.session.user });
+  req.session.save(() => res.json({ ok: true, user: req.session.user }));
 });
 
 app.get('/api/admin/me', (req, res) => {
@@ -827,7 +827,7 @@ app.post('/api/admin/students/:email/approve', requireAdmin, (req, res) => {
   if (!wasAlreadyApproved) {
     sendEmail({
       to: updated.email, subject: 'Your EduMitra account is approved',
-      html: approvalEmailHtml(updated.name, `${FRONTEND_URL}/dashboard.html`)
+      html: approvalEmailHtml(updated.name, `${FRONTEND_URL}/dashboard`)
     });
   }
   res.json({ ok: true });

@@ -856,10 +856,8 @@ async function doLogin() {
 
 async function doLogout() {
   try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
-  _me = null;
-  document.getElementById('appShell').classList.remove('show');
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginEmail').value = '';
+  window.location.replace('/');
+
   document.getElementById('loginPassword').value = '';
 }
 
