@@ -622,7 +622,7 @@ let _referralData = null;
 // ── Auth guard & init ──────────────────────────────
 (async function init() {
   try {
-    const r = await fetch('/api/me');
+    const r = await fetch('/api/me', { credentials: 'same-origin' });
     const d = await r.json();
     if (!d.loggedIn || d.user.role !== 'student') {
       window.location.replace('/');

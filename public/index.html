@@ -5131,7 +5131,7 @@ function tick(el) {
 // 1. Route already-logged-in users to the right dashboard on page load
 (async function routeUserOnLoad() {
   try {
-    const r = await fetch('/api/me');
+    const r = await fetch('/api/me', { credentials: 'same-origin' });
     const d = await r.json();
     if (!d.loggedIn) return;
     const role = d.user.role;
@@ -5142,7 +5142,6 @@ function tick(el) {
     } else if (role === 'student' && d.user.approved) {
       window.location.replace('/dashboard');
     }
-    // Unapproved student — stay on homepage (the existing pending UI handles it)
   } catch (e) { /* server unreachable, ignore */ }
 })();
 

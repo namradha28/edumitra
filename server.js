@@ -23,18 +23,18 @@ const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || '';
 app.set('trust proxy', 1);
 
 app.use(express.json());
-// Use FileStore when the filesystem is writable (local dev), fall back to
-// default MemoryStore on platforms with ephemeral filesystems (DigitalOcean
-// App Platform). MemoryStore is fine for production here because sessions are
-// short-lived and the platform restarts are infrequent.
+// Session store: always use FileStore with auto-created directory.
+// On DigitalOcean App Platform the filesystem IS writable at runtime,
+// even though it resets on redeploy. This is fine — sessions are ephemeral.
 function buildSessionStore() {
   try {
     const sessDir = path.join(__dirname, 'data', 'sessions');
-    if (!fs.existsSync(sessDir)) fs.mkdirSync(sessDir, { recursive: true });
-    // Quick write test
+    fs.mkdirSync(sessDir, { recursive: true });
+    // Quick write test to confirm filesystem is writable
     const testFile = path.join(sessDir, '.write-test');
     fs.writeFileSync(testFile, '1');
     fs.unlinkSync(testFile);
+    console.log('[session] Using FileStore at', sessDir);
     return new FileStore({
       path:    sessDir,
       ttl:     7 * 24 * 60 * 60,
@@ -43,7 +43,7 @@ function buildSessionStore() {
     });
   } catch (e) {
     console.warn('[session] FileStore unavailable, using MemoryStore:', e.message);
-    return undefined; // express-session defaults to MemoryStore
+    return undefined;
   }
 }
 
