@@ -230,9 +230,8 @@ app.get('/auth/google/callback', async (req, res) => {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
-    const dest = user.approved ? `${FRONTEND_URL}/dashboard` : `${FRONTEND_URL}/pending`;
     await loginSession(req, userData);
-    res.redirect(dest);
+    res.redirect(`${FRONTEND_URL}/auth/verify-session`);
   } catch (err) {
     console.error('Google OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=google_failed`);
@@ -266,9 +265,8 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
-    const dest = user.approved ? `${FRONTEND_URL}/dashboard` : `${FRONTEND_URL}/pending`;
     await loginSession(req, userData);
-    res.redirect(dest);
+    res.redirect(`${FRONTEND_URL}/auth/verify-session`);
   } catch (err) {
     console.error('LinkedIn OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=linkedin_failed`);
@@ -393,6 +391,17 @@ app.post('/api/auth/reset-password', async (req, res) => {
     delete tokens[tokenHash]; writeResetTokens(tokens);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: 'Failed to reset password.' }); }
+});
+
+app.get('/auth/verify-session', (req, res) => {
+  if (req.session.user) {
+    const role = req.session.user.role;
+    if (role === 'student' && req.session.user.approved) return res.redirect(`${FRONTEND_URL}/dashboard`);
+    if (role === 'student') return res.redirect(`${FRONTEND_URL}/pending`);
+    if (role === 'counsellor') return res.redirect(`${FRONTEND_URL}/counsellor`);
+    if (role === 'admin' || role === 'superadmin') return res.redirect(`${FRONTEND_URL}/admin`);
+  }
+  res.redirect(`${FRONTEND_URL}/`);
 });
 
 app.get('/api/me', (req, res) => {
