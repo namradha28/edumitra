@@ -1,4 +1,6 @@
 require('dotenv').config();
+// Polyfill WebSocket for Supabase on Node < 18
+if (!globalThis.WebSocket) { globalThis.WebSocket = require('ws'); }
 const express = require('express');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
