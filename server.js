@@ -56,7 +56,7 @@ app.use(session({
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    secure: process.env.NODE_ENV === 'production'
+    secure: false   // DigitalOcean App Platform terminates SSL at proxy; Express sees HTTP internally
   }
 }));
 app.use(express.static(path.join(__dirname, 'public')));
