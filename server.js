@@ -386,13 +386,20 @@ app.get('/auth/google/callback', async (req, res) => {
       approved: existing ? existing.approved : false,
       registeredAt: existing ? existing.registeredAt : Date.now()
     });
-    req.session.user = { role: 'student', ...publicUser(user) };
+    const userData = { role: 'student', ...publicUser(user) };
     if (isNew) {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
     const dest = user.approved ? `${FRONTEND_URL}/dashboard` : `${FRONTEND_URL}/pending`;
-    req.session.save(() => res.redirect(dest));
+    req.session.regenerate((err) => {
+      if (err) return res.redirect(`${FRONTEND_URL}/?auth=error&reason=session_error`);
+      req.session.user = userData;
+      req.session.save((err2) => {
+        if (err2) return res.redirect(`${FRONTEND_URL}/?auth=error&reason=session_save_error`);
+        res.redirect(dest);
+      });
+    });
   } catch (err) {
     console.error('Google OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=google_failed`);
@@ -440,13 +447,20 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       approved: existing ? existing.approved : false,
       registeredAt: existing ? existing.registeredAt : Date.now()
     });
-    req.session.user = { role: 'student', ...publicUser(user) };
+    const userData = { role: 'student', ...publicUser(user) };
     if (isNew) {
       sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
       if (SUPERADMIN_EMAIL) sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
     }
     const dest = user.approved ? `${FRONTEND_URL}/dashboard` : `${FRONTEND_URL}/pending`;
-    req.session.save(() => res.redirect(dest));
+    req.session.regenerate((err) => {
+      if (err) return res.redirect(`${FRONTEND_URL}/?auth=error&reason=session_error`);
+      req.session.user = userData;
+      req.session.save((err2) => {
+        if (err2) return res.redirect(`${FRONTEND_URL}/?auth=error&reason=session_save_error`);
+        res.redirect(dest);
+      });
+    });
   } catch (err) {
     console.error('LinkedIn OAuth error:', err);
     res.redirect(`${FRONTEND_URL}/?auth=error&reason=linkedin_failed`);
@@ -467,12 +481,19 @@ app.post('/api/auth/signup', signupLimiter, (req, res) => {
     provider: 'password', approved: false, registeredAt: Date.now(),
     referredBy
   });
-  req.session.user = { role: 'student', ...publicUser(user) };
   sendEmail({ to: user.email, subject: 'EduMitra — We received your registration', html: welcomeEmailHtml(user.name) });
   if (SUPERADMIN_EMAIL) {
     sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
   }
-  req.session.save(() => res.json({ ok: true, user: req.session.user }));
+  const userData = { role: 'student', ...publicUser(user) };
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: 'Session error.' });
+    req.session.user = userData;
+    req.session.save((err2) => {
+      if (err2) return res.status(500).json({ error: 'Session save error.' });
+      res.json({ ok: true, user: req.session.user });
+    });
+  });
 });
 
 app.post('/api/auth/login', loginLimiter, (req, res) => {
@@ -482,8 +503,15 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   if (!user) return res.status(401).json({ error: GENERIC });
   if (!user.passwordHash) return res.status(401).json({ error: GENERIC });
   if (!verifyPassword(password || '', user.passwordHash)) return res.status(401).json({ error: GENERIC });
-  req.session.user = { role: 'student', ...publicUser(user) };
-  req.session.save(() => res.json({ ok: true, user: req.session.user }));
+  const userData = { role: 'student', ...publicUser(user) };
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: 'Session error.' });
+    req.session.user = userData;
+    req.session.save((err2) => {
+      if (err2) return res.status(500).json({ error: 'Session save error.' });
+      res.json({ ok: true, user: req.session.user });
+    });
+  });
 });
 
 // Single unified login — detects role (superadmin → admin → counsellor →
@@ -497,36 +525,41 @@ app.post('/api/login', loginLimiter, (req, res) => {
   const GENERIC = 'Invalid email or password.';
   if (!key || !password) return res.status(401).json({ error: GENERIC });
 
+  let userData = null;
+
   if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
-    if (password === SUPERADMIN_PASSWORD) {
-      req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
-      return req.session.save(() => res.json({ ok: true, user: req.session.user }));
+    if (password !== SUPERADMIN_PASSWORD) return res.status(401).json({ error: GENERIC });
+    userData = { role: 'superadmin', email: key, name: 'Super Admin' };
+  } else {
+    const admin = readAdmins()[key];
+    if (admin) {
+      if (!verifyPassword(password, admin.passwordHash)) return res.status(401).json({ error: GENERIC });
+      userData = { role: 'admin', email: key, name: admin.name };
+    } else {
+      const counsellor = readCounsellors()[key];
+      if (counsellor) {
+        if (!verifyPassword(password, counsellor.passwordHash)) return res.status(401).json({ error: GENERIC });
+        userData = { role: 'counsellor', email: key, name: counsellor.name };
+      } else {
+        const user = readUsers()[key];
+        if (user && user.passwordHash) {
+          if (!verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: GENERIC });
+          userData = { role: 'student', ...publicUser(user) };
+        }
+      }
     }
-    return res.status(401).json({ error: GENERIC });
   }
 
-  const admin = readAdmins()[key];
-  if (admin) {
-    if (!verifyPassword(password, admin.passwordHash)) return res.status(401).json({ error: GENERIC });
-    req.session.user = { role: 'admin', email: key, name: admin.name };
-    return req.session.save(() => res.json({ ok: true, user: req.session.user }));
-  }
+  if (!userData) return res.status(401).json({ error: GENERIC });
 
-  const counsellor = readCounsellors()[key];
-  if (counsellor) {
-    if (!verifyPassword(password, counsellor.passwordHash)) return res.status(401).json({ error: GENERIC });
-    req.session.user = { role: 'counsellor', email: key, name: counsellor.name };
-    return req.session.save(() => res.json({ ok: true, user: req.session.user }));
-  }
-
-  const user = readUsers()[key];
-  if (user && user.passwordHash) {
-    if (!verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: GENERIC });
-    req.session.user = { role: 'student', ...publicUser(user) };
-    return req.session.save(() => res.json({ ok: true, user: req.session.user }));
-  }
-
-  return res.status(401).json({ error: GENERIC });
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: 'Session error.' });
+    req.session.user = userData;
+    req.session.save((err2) => {
+      if (err2) return res.status(500).json({ error: 'Session save error.' });
+      res.json({ ok: true, user: req.session.user });
+    });
+  });
 });
 
 app.post('/api/auth/verify', (req, res) => {
@@ -785,18 +818,26 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
   const { email, password } = req.body || {};
   const key = (email || '').toLowerCase();
   const GENERIC = 'Invalid email or password.';
+
+  let userData = null;
   if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
-    if (password === SUPERADMIN_PASSWORD) {
-      req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
-      return req.session.save(() => res.json({ ok: true, user: req.session.user }));
-    }
-    return res.status(401).json({ error: GENERIC });
+    if (password !== SUPERADMIN_PASSWORD) return res.status(401).json({ error: GENERIC });
+    userData = { role: 'superadmin', email: key, name: 'Super Admin' };
+  } else {
+    const admin = readAdmins()[key];
+    if (!admin) return res.status(401).json({ error: GENERIC });
+    if (!verifyPassword(password || '', admin.passwordHash)) return res.status(401).json({ error: GENERIC });
+    userData = { role: 'admin', email: key, name: admin.name };
   }
-  const admin = readAdmins()[key];
-  if (!admin) return res.status(401).json({ error: GENERIC });
-  if (!verifyPassword(password || '', admin.passwordHash)) return res.status(401).json({ error: GENERIC });
-  req.session.user = { role: 'admin', email: key, name: admin.name };
-  req.session.save(() => res.json({ ok: true, user: req.session.user }));
+
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: 'Session error.' });
+    req.session.user = userData;
+    req.session.save((err2) => {
+      if (err2) return res.status(500).json({ error: 'Session save error.' });
+      res.json({ ok: true, user: req.session.user });
+    });
+  });
 });
 
 app.get('/api/admin/me', (req, res) => {
