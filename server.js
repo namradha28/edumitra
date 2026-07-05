@@ -3,7 +3,6 @@ require('dotenv').config();
 if (!globalThis.WebSocket) { globalThis.WebSocket = require('ws'); }
 const express = require('express');
 const session = require('express-session');
-const FileStore = require('session-file-store')(session);
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const Razorpay = require('razorpay');
@@ -28,23 +27,37 @@ const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || '';
 app.set('trust proxy', 1);
 app.use(express.json());
 
-function buildSessionStore() {
-  try {
-    const sessDir = path.join(__dirname, 'data', 'sessions');
-    fs.mkdirSync(sessDir, { recursive: true });
-    const testFile = path.join(sessDir, '.write-test');
-    fs.writeFileSync(testFile, '1');
-    fs.unlinkSync(testFile);
-    console.log('[session] Using FileStore at', sessDir);
-    return new FileStore({ path: sessDir, ttl: 7 * 24 * 60 * 60, retries: 0, logFn: function () {} });
-  } catch (e) {
-    console.warn('[session] FileStore unavailable, using MemoryStore:', e.message);
-    return undefined;
+/* ── Supabase Session Store ── */
+const Store = session.Store;
+class SupabaseStore extends Store {
+  constructor() { super(); this._clean(); }
+  async _clean() {
+    try { await supabase.from('sessions').delete().lt('expire', new Date().toISOString()); } catch(e) {}
+    setTimeout(() => this._clean(), 10 * 60 * 1000); // clean every 10 min
+  }
+  async get(sid, cb) {
+    try {
+      const { data } = await supabase.from('sessions').select('sess').eq('sid', sid).gt('expire', new Date().toISOString()).maybeSingle();
+      cb(null, data ? data.sess : null);
+    } catch(e) { cb(null, null); }
+  }
+  async set(sid, sess, cb) {
+    try {
+      const expire = sess.cookie?.expires ? new Date(sess.cookie.expires) : new Date(Date.now() + 7*24*60*60*1000);
+      await supabase.from('sessions').upsert({ sid, sess, expire: expire.toISOString() }, { onConflict: 'sid' });
+      cb(null);
+    } catch(e) { cb(null); }
+  }
+  async destroy(sid, cb) {
+    try { await supabase.from('sessions').delete().eq('sid', sid); } catch(e) {}
+    if (cb) cb(null);
   }
 }
 
+console.log('[session] Using Supabase session store');
+
 app.use(session({
-  store: buildSessionStore(),
+  store: new SupabaseStore(),
   secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
