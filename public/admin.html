@@ -834,6 +834,7 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Signing in…';
   try {
     const res = await fetch('/api/admin/login', {
+      credentials: 'same-origin',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -855,7 +856,7 @@ async function doLogin() {
 }
 
 async function doLogout() {
-  try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
+  try { await fetch('/api/logout', { credentials: 'same-origin', method: 'POST' }); } catch(e) {}
   window.location.replace('/');
 
   document.getElementById('loginPassword').value = '';
@@ -881,7 +882,7 @@ function enterApp() {
 
 async function loadOverview() {
   try {
-    const res = await fetch('/api/admin/analytics');
+    const res = await fetch('/api/admin/analytics', { credentials: 'same-origin' });
     if (!res.ok) return;
     const data = await res.json();
     document.getElementById('statTotalStudents').textContent    = data.total || 0;
@@ -969,7 +970,7 @@ async function loadStudents() {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
   try {
-    const res = await fetch('/api/admin/students');
+    const res = await fetch('/api/admin/students', { credentials: 'same-origin' });
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#991b1b;padding:24px;">Could not load students.</td></tr>';
       return;
@@ -985,7 +986,7 @@ async function loadStudents() {
 async function approveStudent(email) {
   let counsellorOptions = '<option value="">No assignment yet</option>';
   try {
-    const cr = await fetch('/api/superadmin/counsellors');
+    const cr = await fetch('/api/superadmin/counsellors', { credentials: 'same-origin' });
     if (cr.ok) {
       const cd = await cr.json();
       (cd.counsellors || []).forEach(c => {
@@ -1027,6 +1028,7 @@ async function confirmApprove(email) {
   document.getElementById('_approveModal').remove();
   try {
     await fetch('/api/admin/students/' + encodeURIComponent(email) + '/approve', {
+        credentials: 'same-origin',
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ assignedCounsellorEmail: assignedCounsellorEmail || null })
@@ -1038,7 +1040,7 @@ async function confirmApprove(email) {
 async function rejectStudent(email) {
   if (!confirm('Reject this student?')) return;
   try {
-    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/reject', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/reject', { credentials: 'same-origin', method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
     loadStudents();
     loadOverview();
   } catch(e) { alert('Failed to reject.'); }
@@ -1046,7 +1048,7 @@ async function rejectStudent(email) {
 
 async function loadAnalytics() {
   try {
-    const res = await fetch('/api/admin/analytics');
+    const res = await fetch('/api/admin/analytics', { credentials: 'same-origin' });
     if (!res.ok) return;
     const data = await res.json();
     const chart = document.getElementById('signupsChart');
@@ -1068,7 +1070,7 @@ async function loadAdmins() {
   const tbody = document.getElementById('adminsTbody');
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
   try {
-    const res = await fetch('/api/superadmin/admins');
+    const res = await fetch('/api/superadmin/admins', { credentials: 'same-origin' });
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Could not load admins.</td></tr>';
       return;
@@ -1099,6 +1101,7 @@ async function addAdmin() {
   if (!name || !email || !password) { msg.textContent = 'Fill all three fields.'; return; }
   try {
     const res = await fetch('/api/superadmin/admins', {
+      credentials: 'same-origin',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password })
@@ -1124,7 +1127,7 @@ async function addAdmin() {
 async function removeAdmin(email) {
   if (!confirm('Remove admin ' + email + '?')) return;
   try {
-    await fetch('/api/superadmin/admins/' + encodeURIComponent(email), { method: 'DELETE' });
+    await fetch('/api/superadmin/admins/' + encodeURIComponent(email), { credentials: 'same-origin', method: 'DELETE' });
     loadAdmins();
   } catch (e) { alert('Failed to remove.'); }
 }
@@ -1140,7 +1143,7 @@ async function loadCounsellors() {
   const tbody = document.getElementById('counsellorsTbody');
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
   try {
-    const res = await fetch('/api/superadmin/counsellors');
+    const res = await fetch('/api/superadmin/counsellors', { credentials: 'same-origin' });
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Could not load counsellors.</td></tr>';
       return;
@@ -1175,6 +1178,7 @@ async function addCounsellor() {
   btn.textContent = 'Adding…';
   try {
     const res = await fetch('/api/superadmin/counsellors', {
+      credentials: 'same-origin',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email })
@@ -1209,7 +1213,7 @@ async function addCounsellor() {
 async function removeCounsellor(email) {
   if (!confirm('Remove counsellor ' + email + '? They will lose access immediately.')) return;
   try {
-    const res = await fetch('/api/superadmin/counsellors/' + encodeURIComponent(email), { method: 'DELETE' });
+    const res = await fetch('/api/superadmin/counsellors/' + encodeURIComponent(email), { credentials: 'same-origin', method: 'DELETE' });
     if (!res.ok) { alert('Failed to remove.'); return; }
     loadCounsellors();
   } catch (e) { alert('Network error.'); }
@@ -1228,7 +1232,7 @@ function escapeAttr(str) {
 
 (async function() {
   try {
-    const res = await fetch('/api/admin/me');
+    const res = await fetch('/api/admin/me', { credentials: 'same-origin' });
     const data = await res.json();
     if (data.loggedIn) {
       _me = data.user;
@@ -1242,7 +1246,7 @@ async function loadFeeApprovals() {
   const container = document.getElementById('fee-approvals-container');
   const badge = document.getElementById('fee-badge');
   try {
-    const r = await fetch('/api/admin/fee-approvals');
+    const r = await fetch('/api/admin/fee-approvals', { credentials: 'same-origin' });
     const d = await r.json();
     const pending = d.pending || [];
     if (badge) {
@@ -1277,6 +1281,7 @@ async function loadFeeApprovals() {
 async function reviewFee(email, action) {
   try {
     const r = await fetch('/api/admin/counsellors/' + encodeURIComponent(email) + '/fee', {
+    credentials: 'same-origin',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
