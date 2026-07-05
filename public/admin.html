@@ -970,7 +970,7 @@ async function loadStudents() {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
   try {
-    const res = await fetch('/api/admin/students', { credentials: 'same-origin' });
+    const res = await fetch('/api/admin/students', { credentials: 'same-origin', cache: 'no-store' });
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#991b1b;padding:24px;">Could not load students.</td></tr>';
       return;

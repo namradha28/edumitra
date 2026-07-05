@@ -529,6 +529,7 @@ app.get('/api/admin/me', (req, res) => {
 });
 
 app.get('/api/admin/students', requireAdmin, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try { const users = await getAllUsers(); res.json({ students: Object.values(users).map(publicUser) }); }
   catch (err) { res.status(500).json({ error: 'Failed to load students.' }); }
 });
@@ -556,6 +557,7 @@ app.post('/api/admin/students/:email/reject', requireAdmin, async (req, res) => 
 });
 
 app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const usersMap = await getAllUsers();
     const users = Object.values(usersMap);
