@@ -27,6 +27,14 @@ const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || '';
 app.set('trust proxy', 1);
 app.use(express.json());
 
+// Prevent CDN and browser caching on all API routes
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 /* ── Supabase Session Store ── */
 const Store = session.Store;
 class SupabaseStore extends Store {
