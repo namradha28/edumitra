@@ -115,7 +115,9 @@ async function getUser(email) {
   return rowToUser(data);
 }
 async function getAllUsers() {
-  const { data } = await supabase.from('users').select('*');
+  const { data, error } = await supabase.from('users').select('*');
+  if (error) { console.error('[supabase] getAllUsers error:', error.message, error.code); return {}; }
+  console.log('[supabase] getAllUsers:', (data||[]).length, 'users');
   const result = {}; (data || []).forEach(row => { result[row.email] = rowToUser(row); }); return result;
 }
 async function saveUser(userObj) {
@@ -537,9 +539,14 @@ app.get('/api/admin/me', (req, res) => {
 });
 
 app.get('/api/admin/students', requireAdmin, async (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  try { const users = await getAllUsers(); res.json({ students: Object.values(users).map(publicUser) }); }
-  catch (err) { res.status(500).json({ error: 'Failed to load students.' }); }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  try {
+    const users = await getAllUsers();
+    const list = Object.values(users).map(publicUser);
+    console.log('[admin/students] returning', list.length, 'students');
+    res.json({ students: list });
+  } catch (err) { console.error('[admin/students] error:', err.message); res.status(500).json({ error: 'Failed to load students.' }); }
 });
 
 app.post('/api/admin/students/:email/approve', requireAdmin, async (req, res) => {
