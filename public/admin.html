@@ -502,10 +502,6 @@
     <div class="nav-item" data-view="analytics" onclick="switchView('analytics')">
       <span class="icon">📈</span> <span>Analytics &amp; Reports</span>
     </div>
-    <div class="nav-item" data-view="fee-approvals" onclick="switchView('fee-approvals')">
-      <span class="icon">💰</span> Fee Approvals
-      <span class="badge" id="fee-badge" style="display:none">0</span>
-    </div>
     <div class="nav-item" data-view="settings" onclick="switchView('settings')">
       <span class="icon">⚙️</span> <span>System Settings</span>
     </div>
@@ -621,7 +617,7 @@
           </div>
           <div id="counsellorMsg" style="font-size:12.5px;color:#6b7280;margin-top:10px;line-height:1.5;"></div>
           <div style="font-size:11.5px;color:#6b7280;margin-top:14px;padding-top:12px;border-top:1px dashed #eaedf5;">
-            <strong>How this works:</strong> Enter the counsellor's name and email, then click Add. A 12-character temporary password is generated and emailed to them at the address you provided. They can log in at <code style="background:#faf7f2;padding:2px 6px;border-radius:3px;">/counsellor-login</code>.
+            <strong>How this works:</strong> Enter the counsellor's name and email, then click Add. A 12-character temporary password is generated and emailed to them at the address you provided. They can log in at <code style="background:#faf7f2;padding:2px 6px;border-radius:3px;">/counsellor-login.html</code>.
           </div>
         </div>
       </section>
@@ -727,22 +723,6 @@
       </section>
 
       <!-- ════════ Settings ════════ -->
-      <section class="view" id="view-fee-approvals">
-        <div class="view-header">
-          <h1>Fee Approvals</h1>
-          <div class="sub">Review and approve counsellor session fees before they go live to students.</div>
-        </div>
-        <div class="panel">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <h3 style="margin:0;">Pending Fee Requests</h3>
-            <button onclick="loadFeeApprovals()" style="padding:7px 14px;background:#f0f2f7;border:none;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;">↻ Refresh</button>
-          </div>
-          <div id="fee-approvals-container">
-            <div style="text-align:center;color:#6b7280;padding:24px;">Loading…</div>
-          </div>
-        </div>
-      </section>
-
       <section class="view" id="view-settings">
         <div class="view-header">
           <h1>System Settings</h1>
@@ -791,14 +771,13 @@
 let _me = null;
 
 const viewTitles = {
-  overview:       { title: 'Platform Overview',         crumb: 'Operations / Platform Overview' },
-  counsellors:    { title: 'Counsellor Management',     crumb: 'Operations / Counsellor Management' },
-  sessions:       { title: 'Session & Request Control', crumb: 'Operations / Session & Request Control' },
-  ratings:        { title: 'Confidential Rating Vault', crumb: 'Operations / Confidential Rating Vault' },
-  users:          { title: 'Users & Services',          crumb: 'Platform / Users & Services' },
-  analytics:      { title: 'Analytics & Reports',       crumb: 'Platform / Analytics & Reports' },
-  'fee-approvals':{ title: 'Fee Approvals',             crumb: 'Platform / Fee Approvals' },
-  settings:       { title: 'System Settings',           crumb: 'Platform / System Settings' }
+  overview:    { title: 'Platform Overview',         crumb: 'Operations / Platform Overview' },
+  counsellors: { title: 'Counsellor Management',     crumb: 'Operations / Counsellor Management' },
+  sessions:    { title: 'Session & Request Control', crumb: 'Operations / Session & Request Control' },
+  ratings:     { title: 'Confidential Rating Vault', crumb: 'Operations / Confidential Rating Vault' },
+  users:       { title: 'Users & Services',          crumb: 'Platform / Users & Services' },
+  analytics:   { title: 'Analytics & Reports',       crumb: 'Platform / Analytics & Reports' },
+  settings:    { title: 'System Settings',           crumb: 'Platform / System Settings' }
 };
 
 function switchView(name) {
@@ -811,10 +790,9 @@ function switchView(name) {
   document.getElementById('topbarBreadcrumb').textContent = meta.crumb;
 
   // Load data for views that need it
-  if (name === 'users')           loadStudents();
-  if (name === 'analytics')       loadAnalytics();
-  if (name === 'settings')        loadAdmins();
-  if (name === 'fee-approvals')   loadFeeApprovals();
+  if (name === 'users')        loadStudents();
+  if (name === 'analytics')    loadAnalytics();
+  if (name === 'settings')     loadAdmins();
   if (name === 'counsellors')  loadCounsellors();
 }
 
@@ -834,7 +812,6 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Signing in…';
   try {
     const res = await fetch('/api/admin/login', {
-      credentials: 'same-origin',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -856,9 +833,11 @@ async function doLogin() {
 }
 
 async function doLogout() {
-  try { await fetch('/api/logout', { credentials: 'same-origin', method: 'POST' }); } catch(e) {}
-  window.location.replace('/');
-
+  try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
+  _me = null;
+  document.getElementById('appShell').classList.remove('show');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginEmail').value = '';
   document.getElementById('loginPassword').value = '';
 }
 
@@ -882,7 +861,7 @@ function enterApp() {
 
 async function loadOverview() {
   try {
-    const res = await fetch('/api/admin/analytics', { credentials: 'same-origin' });
+    const res = await fetch('/api/admin/analytics');
     if (!res.ok) return;
     const data = await res.json();
     document.getElementById('statTotalStudents').textContent    = data.total || 0;
@@ -970,7 +949,7 @@ async function loadStudents() {
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
   try {
-    const res = await fetch('/api/admin/students', { credentials: 'same-origin', cache: 'no-store' });
+    const res = await fetch('/api/admin/students');
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#991b1b;padding:24px;">Could not load students.</td></tr>';
       return;
@@ -986,7 +965,7 @@ async function loadStudents() {
 async function approveStudent(email) {
   let counsellorOptions = '<option value="">No assignment yet</option>';
   try {
-    const cr = await fetch('/api/superadmin/counsellors', { credentials: 'same-origin' });
+    const cr = await fetch('/api/admin/counsellors');
     if (cr.ok) {
       const cd = await cr.json();
       (cd.counsellors || []).forEach(c => {
@@ -1028,7 +1007,6 @@ async function confirmApprove(email) {
   document.getElementById('_approveModal').remove();
   try {
     await fetch('/api/admin/students/' + encodeURIComponent(email) + '/approve', {
-        credentials: 'same-origin',
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ assignedCounsellorEmail: assignedCounsellorEmail || null })
@@ -1040,7 +1018,7 @@ async function confirmApprove(email) {
 async function rejectStudent(email) {
   if (!confirm('Reject this student?')) return;
   try {
-    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/reject', { credentials: 'same-origin', method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    await fetch('/api/admin/students/' + encodeURIComponent(email) + '/reject', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
     loadStudents();
     loadOverview();
   } catch(e) { alert('Failed to reject.'); }
@@ -1048,7 +1026,7 @@ async function rejectStudent(email) {
 
 async function loadAnalytics() {
   try {
-    const res = await fetch('/api/admin/analytics', { credentials: 'same-origin' });
+    const res = await fetch('/api/admin/analytics');
     if (!res.ok) return;
     const data = await res.json();
     const chart = document.getElementById('signupsChart');
@@ -1070,7 +1048,7 @@ async function loadAdmins() {
   const tbody = document.getElementById('adminsTbody');
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
   try {
-    const res = await fetch('/api/superadmin/admins', { credentials: 'same-origin' });
+    const res = await fetch('/api/superadmin/admins');
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Could not load admins.</td></tr>';
       return;
@@ -1101,7 +1079,6 @@ async function addAdmin() {
   if (!name || !email || !password) { msg.textContent = 'Fill all three fields.'; return; }
   try {
     const res = await fetch('/api/superadmin/admins', {
-      credentials: 'same-origin',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password })
@@ -1127,7 +1104,7 @@ async function addAdmin() {
 async function removeAdmin(email) {
   if (!confirm('Remove admin ' + email + '?')) return;
   try {
-    await fetch('/api/superadmin/admins/' + encodeURIComponent(email), { credentials: 'same-origin', method: 'DELETE' });
+    await fetch('/api/superadmin/admins/' + encodeURIComponent(email), { method: 'DELETE' });
     loadAdmins();
   } catch (e) { alert('Failed to remove.'); }
 }
@@ -1143,7 +1120,7 @@ async function loadCounsellors() {
   const tbody = document.getElementById('counsellorsTbody');
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:24px;">Loading…</td></tr>';
   try {
-    const res = await fetch('/api/superadmin/counsellors', { credentials: 'same-origin' });
+    const res = await fetch('/api/superadmin/counsellors');
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#991b1b;padding:24px;">Could not load counsellors.</td></tr>';
       return;
@@ -1178,7 +1155,6 @@ async function addCounsellor() {
   btn.textContent = 'Adding…';
   try {
     const res = await fetch('/api/superadmin/counsellors', {
-      credentials: 'same-origin',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email })
@@ -1213,7 +1189,7 @@ async function addCounsellor() {
 async function removeCounsellor(email) {
   if (!confirm('Remove counsellor ' + email + '? They will lose access immediately.')) return;
   try {
-    const res = await fetch('/api/superadmin/counsellors/' + encodeURIComponent(email), { credentials: 'same-origin', method: 'DELETE' });
+    const res = await fetch('/api/superadmin/counsellors/' + encodeURIComponent(email), { method: 'DELETE' });
     if (!res.ok) { alert('Failed to remove.'); return; }
     loadCounsellors();
   } catch (e) { alert('Network error.'); }
@@ -1232,70 +1208,14 @@ function escapeAttr(str) {
 
 (async function() {
   try {
-    const res = await fetch('/api/admin/me', { credentials: 'same-origin' });
+    const res = await fetch('/api/admin/me');
     const data = await res.json();
     if (data.loggedIn) {
       _me = data.user;
       enterApp();
-      loadFeeApprovals(); // check for pending fees on load and show badge
     }
   } catch (e) {}
 })();
-
-async function loadFeeApprovals() {
-  const container = document.getElementById('fee-approvals-container');
-  const badge = document.getElementById('fee-badge');
-  try {
-    const r = await fetch('/api/admin/fee-approvals', { credentials: 'same-origin' });
-    const d = await r.json();
-    const pending = d.pending || [];
-    if (badge) {
-      badge.textContent = pending.length;
-      badge.style.display = pending.length ? 'inline-block' : 'none';
-    }
-    if (!container) return;
-    if (!pending.length) {
-      container.innerHTML = '<div style="text-align:center;color:#6b7280;padding:24px;">No pending fee requests.</div>';
-      return;
-    }
-    container.innerHTML = pending.map(c => `
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 0;border-bottom:1px solid #f0f2f7;">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#0a1628;">${escapeHtml(c.name)}</div>
-          <div style="font-size:12.5px;color:#6b7280;margin-top:2px;">${escapeHtml(c.email)}</div>
-          <div style="font-size:13px;font-weight:600;color:#0a1628;margin-top:4px;">Requested fee: ₹${Number(c.sessionFee).toLocaleString('en-IN')}</div>
-          <div style="font-size:12px;color:#6b7280;">Student pays (incl. 3% + 18% GST): ₹${(c.sessionFee * 1.03 * 1.18).toFixed(2)}</div>
-          <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Submitted: ${c.feeSubmittedAt ? new Date(c.feeSubmittedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="reviewFee('${escapeAttr(c.email)}','approve')" style="padding:8px 16px;background:#0a1628;color:#fff;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;">✓ Approve</button>
-          <button onclick="reviewFee('${escapeAttr(c.email)}','reject')"  style="padding:8px 16px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;">✕ Reject</button>
-        </div>
-      </div>
-    `).join('');
-  } catch(e) {
-    if (container) container.innerHTML = '<div style="color:#dc2626;padding:16px;">Could not load fee requests.</div>';
-  }
-}
-
-async function reviewFee(email, action) {
-  try {
-    const r = await fetch('/api/admin/counsellors/' + encodeURIComponent(email) + '/fee', {
-    credentials: 'same-origin',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action })
-    });
-    const d = await r.json();
-    if (r.ok) {
-      loadFeeApprovals();
-    } else {
-      alert(d.error || 'Action failed.');
-    }
-  } catch(e) {
-    alert('Network error. Please try again.');
-  }
-}
 </script>
 </body>
 </html>
