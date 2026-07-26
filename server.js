@@ -23,7 +23,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: 'lax' }
 }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 /* ════════════════════════ RATE LIMITERS ════════════════════════ */
 
@@ -389,6 +389,44 @@ app.post('/api/auth/signup', signupLimiter, (req, res) => {
     sendEmail({ to: SUPERADMIN_EMAIL, subject: `New student signup: ${user.name} (${user.email})`, html: adminNewSignupEmailHtml(user.name, user.email) });
   }
   res.json({ ok: true, user: req.session.user });
+});
+
+app.post('/api/login', loginLimiter, (req, res) => {
+  const { email, password } = req.body || {};
+  const key = (email || '').toLowerCase().trim();
+  const GENERIC = 'Invalid email or password.';
+  if (!key || !password) return res.status(401).json({ error: GENERIC });
+
+  if (SUPERADMIN_EMAIL && key === SUPERADMIN_EMAIL) {
+    if (password === SUPERADMIN_PASSWORD) {
+      req.session.user = { role: 'superadmin', email: key, name: 'Super Admin' };
+      return res.json({ ok: true, user: req.session.user });
+    }
+    return res.status(401).json({ error: GENERIC });
+  }
+
+  const admin = readAdmins()[key];
+  if (admin) {
+    if (!verifyPassword(password, admin.passwordHash)) return res.status(401).json({ error: GENERIC });
+    req.session.user = { role: 'admin', email: key, name: admin.name };
+    return res.json({ ok: true, user: req.session.user });
+  }
+
+  const counsellor = readCounsellors()[key];
+  if (counsellor) {
+    if (!verifyPassword(password, counsellor.passwordHash)) return res.status(401).json({ error: GENERIC });
+    req.session.user = { role: 'counsellor', email: key, name: counsellor.name };
+    return res.json({ ok: true, user: req.session.user });
+  }
+
+  const user = readUsers()[key];
+  if (user) {
+    if (!user.passwordHash || !verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: GENERIC });
+    req.session.user = { role: 'student', ...publicUser(user) };
+    return res.json({ ok: true, user: req.session.user });
+  }
+
+  return res.status(401).json({ error: GENERIC });
 });
 
 app.post('/api/detect-role', (req, res) => {
