@@ -350,8 +350,16 @@ async function doLogin() {
   btn.innerHTML = '<span class="spinner"></span>Signing in...';
   hideAlert();
 
+  const endpointByRole = {
+    student: '/api/auth/login',
+    counsellor: '/api/counsellor/login',
+    admin: '/api/admin/login',
+    superadmin: '/api/admin/login'
+  };
+  const endpoint = endpointByRole[_detectedRole] || '/api/auth/login';
+
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -365,15 +373,17 @@ async function doLogin() {
       return;
     }
 
-    // Success — redirect based on role
+    // Success — redirect based on the real user object the server returned
     showAlert('Signed in! Redirecting...', 'success');
-    setTimeout(() => {
-      if (data.role === 'student' && !data.approved) {
-        window.location.href = '/?pending=1';
-      } else {
-        window.location.href = data.redirect;
-      }
-    }, 600);
+    const user = data.user || {};
+    const redirectByRole = {
+      student: user.approved ? '/dashboard.html' : '/?pending=1',
+      counsellor: '/counsellor.html',
+      admin: '/admin.html',
+      superadmin: '/admin.html'
+    };
+    const target = redirectByRole[user.role] || '/';
+    setTimeout(() => { window.location.href = target; }, 600);
 
   } catch(e) {
     showAlert('Could not reach the server. Make sure it is running.', 'error');
